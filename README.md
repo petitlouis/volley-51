@@ -1,5 +1,11 @@
 # Volley 5.1, placements animés
 
+[![CI](https://github.com/petitlouis/volley51/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/petitlouis/volley51/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/petitlouis/volley51?display_name=tag&sort=semver)](https://github.com/petitlouis/volley51/releases/latest)
+[![Licence MIT](https://img.shields.io/github/license/petitlouis/volley51)](LICENSE)
+![Node.js 22+](https://img.shields.io/badge/node-%E2%89%A522-339933)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
+
 Application web pour comprendre le système 5.1 (un seul passeur) au volley, avec option libéro :
 rotations, service, réception, défense et attaque. On avance coup par coup en choisissant des
 hypothèses, comme aux échecs, et on voit les joueurs se déplacer.

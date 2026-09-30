@@ -71,15 +71,20 @@ npm run build      # produit dist/index.html
 
 ### Publier une release
 
-`dist/index.html` n'est pas versionné : c'est le fichier de la release GitHub. Pour en publier une :
+`dist/index.html` n'est pas versionné : c'est le fichier de la release GitHub. Le numéro de version vient de
+`package.json` et s'affiche dans le pied de page de l'application. Pour publier, par exemple, la version 0.2.0 :
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+npm version 0.2.0 --no-git-tag-version   # met à jour package.json et package-lock.json
+git add package.json package-lock.json
+git commit -m "chore(release): v0.2.0"
+git tag v0.2.0
+git push && git push origin v0.2.0
 ```
 
-Le workflow `.github/workflows/release.yml` vérifie les types, lance les tests, construit, puis crée la release
-avec le fichier `volley-51-v0.1.0.html`, prêt à télécharger et à ouvrir dans un navigateur.
+Le workflow `.github/workflows/release.yml` refuse la release si le tag ne correspond pas à `package.json`.
+Il vérifie ensuite les types, lance les tests, construit, puis crée la release avec le fichier
+`volley-51-v0.2.0.html`.
 
 L'intégration continue (`.github/workflows/ci.yml`) exécute les types, les tests et le build à chaque
 push sur `main` et à chaque pull request, et publie `dist/index.html` en artefact.

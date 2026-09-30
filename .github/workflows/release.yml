@@ -19,6 +19,16 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Vérifier que le tag correspond à la version de package.json
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG" != "v$VERSION" ]; then
+            echo "Le tag $TAG ne correspond pas à la version de package.json ($VERSION)."
+            exit 1
+          fi
+
       - run: npm ci
       - run: npm run typecheck
       - run: npm test

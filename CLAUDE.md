@@ -16,6 +16,8 @@ npm run dev        # développement
 La CI (`.github/workflows/ci.yml`) lance typecheck, tests et build. `dist/` n'est jamais commité : le fichier
 `dist/index.html` est publié en release GitHub par `.github/workflows/release.yml` quand on pousse un tag `v*`.
 `index.html` à la racine est la source (point d'entrée de Vite), pas le produit.
+Le numéro de version vient de `package.json` (injecté au build en `__APP_VERSION__`, affiché dans le pied de page) ;
+le tag `vX.Y.Z` doit lui être égal, sinon le workflow de release échoue. Procédure dans le README.
 
 ## Règles de jeu à respecter
 

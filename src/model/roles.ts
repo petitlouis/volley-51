@@ -41,11 +41,22 @@ export const ROLE_NAME: Record<Role, string> = {
 
 /**
  * Étiquette du rond : poste au moment du service et rôle, par exemple `3-C`.
- * Le serveur est donc toujours le `1-…`. Le libéro s'appelle simplement `L`.
+ * Le serveur est donc toujours le `1-…`. Les deux R4 s'appellent `R4a` et `R4b`, les deux centraux `Ca` et `Cb`
+ * (identité fixe, même quand la rotation change leur poste). Le libéro porte le poste du central qu'il remplace : `6-L`.
  */
+/** Nom court d'un joueur : les deux R4 et les deux centraux portent une lettre pour les distinguer. */
+export const SHORT_NAME: Record<PlayerId, string> = {
+  P: 'P',
+  R4a: 'R4a',
+  R4b: 'R4b',
+  Ca: 'Ca',
+  Cb: 'Cb',
+  Pt: 'Pt',
+  L: 'L',
+};
+
 export function label(id: PlayerId, poste?: Poste): string {
-  if (id === 'L') return 'L';
-  return poste === undefined ? ROLE_OF[id] : `${poste}-${ROLE_OF[id]}`;
+  return poste === undefined ? SHORT_NAME[id] : `${poste}-${SHORT_NAME[id]}`;
 }
 
 /** Ligne avant (postes 2, 3, 4) ; le libéro est toujours en ligne arrière. */

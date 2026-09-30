@@ -338,9 +338,10 @@ export function defenseScene(
   libero: boolean,
   attack: DefenseAttack,
   intention?: string,
+  ownServe = false,
 ): Scene {
   const placed: Placed = new Map();
-  const slots = courtSlots(rotation, 'defense', libero);
+  const slots = courtSlots(rotation, 'defense', libero, ownServe);
   const setterBack = slots.some((s) => s.player === 'P' && !isFront(s.poste));
   const shifted = setterBack ? slots.filter((s) => !isFront(s.poste) && s.player !== 'P') : [];
   if (setterBack) {
@@ -410,8 +411,9 @@ export function frontAttackers(
   rotation: number,
   libero: boolean,
   setter: PlayerId = 'P',
+  ownServe = false,
 ): Map<2 | 3 | 4, PlayerId> {
-  const front = courtSlots(rotation, 'attack', libero).filter((s) => isFront(s.poste) && s.player !== setter);
+  const front = courtSlots(rotation, 'attack', libero, ownServe).filter((s) => isFront(s.poste) && s.player !== setter);
   const pick = bestAssignment(front.length, ZONES.length, (i, j) => {
     const s = front[i];
     return ZONE_PREF[ROLE_OF[s.player]][ZONES[j]] * 10 + dist2(BASE_XY[s.poste], ZONE_XY[ZONES[j]]) * 0.01;
@@ -422,16 +424,26 @@ export function frontAttackers(
 }
 
 /** Attaquant arrière (pipe) : jamais le libéro ni le passeur. */
-export function pipeAttacker(rotation: number, libero: boolean, setter: PlayerId = 'P'): PlayerId {
-  const back = courtSlots(rotation, 'attack', libero).filter(
+export function pipeAttacker(
+  rotation: number,
+  libero: boolean,
+  setter: PlayerId = 'P',
+  ownServe = false,
+): PlayerId {
+  const back = courtSlots(rotation, 'attack', libero, ownServe).filter(
     (s) => !isFront(s.poste) && s.player !== 'P' && s.player !== 'L' && s.player !== setter,
   );
   back.sort((a, b) => PIPE_PREF[ROLE_OF[a.player]] - PIPE_PREF[ROLE_OF[b.player]]);
   return back[0].player;
 }
 
-export function availableTargets(rotation: number, libero: boolean, setter: PlayerId = 'P'): AttackTarget[] {
-  const zones = frontAttackers(rotation, libero, setter);
+export function availableTargets(
+  rotation: number,
+  libero: boolean,
+  setter: PlayerId = 'P',
+  ownServe = false,
+): AttackTarget[] {
+  const zones = frontAttackers(rotation, libero, setter, ownServe);
   const list: AttackTarget[] = [];
   for (const z of ZONES) if (zones.has(z)) list.push(`p${z}` as AttackTarget);
   list.push('pipe');
@@ -500,11 +512,12 @@ export function attackScene(
   libero: boolean,
   target: AttackTarget,
   setter: PlayerId = 'P',
+  ownServe = false,
 ): Scene {
-  const slots = courtSlots(rotation, 'attack', libero);
+  const slots = courtSlots(rotation, 'attack', libero, ownServe);
   const placed: Placed = new Map();
-  const zones = frontAttackers(rotation, libero, setter);
-  const pipeId = target === 'pipe' ? pipeAttacker(rotation, libero, setter) : null;
+  const zones = frontAttackers(rotation, libero, setter, ownServe);
+  const pipeId = target === 'pipe' ? pipeAttacker(rotation, libero, setter, ownServe) : null;
 
   placed.set(setter, { ...SETTER_TARGET, radius: 1.5 });
   for (const [zone, id] of zones) placed.set(id, { ...ZONE_XY[zone], radius: 1.2 });
@@ -522,21 +535,28 @@ export function attackScene(
 }
 
 /**
- * Deuxième touche : `player` joue la balle (défense ou réception) à sa place actuelle,
- * et `setter` (le passeur, ou le pointu si le passeur a joué la balle) se place au point de passe.
+ * Deuxième touche : `player` joue la balle (défense ou réception) à sa place actuelle ou au point de chute
+ * `contact`, et `setter` (le passeur, ou le pointu si le passeur a joué la balle) se place au point de passe.
+ * Pendant la passe, les attaquants de ligne avant (`attackers`, par zone) se placent déjà à leur zone d'attaque :
+ * le central au centre, le R4 à gauche, le pointu à droite, avant de savoir vers qui va la passe.
  */
 export function secondContactScene(
   base: Scene,
   player: PlayerId,
   setter: PlayerId,
   contact?: Point,
+  attackers?: Map<2 | 3 | 4, PlayerId>,
 ): Scene {
+  const zoneOf = new Map<PlayerId, 2 | 3 | 4>();
+  attackers?.forEach((id, zone) => zoneOf.set(id, zone));
   const players = base.players.map((p) => {
     if (!p.onCourt) return p;
     if (p.id === setter) return { ...p, ...SETTER_TARGET, radius: 1.5 };
     // Le joueur qui reprend la balle court la chercher à son point de chute.
     if (contact && p.id === player) return { ...p, ...contact };
-    // Les joueurs déjà au filet (bloqueurs) se retirent pour libérer le point de passe.
+    const zone = zoneOf.get(p.id);
+    if (zone) return { ...p, ...ZONE_XY[zone], radius: 1.2 };
+    // Les autres joueurs déjà près du filet (bloqueurs) libèrent le point de passe.
     if (dist2(p, SETTER_TARGET) < 1.8 ** 2) return { ...p, y: 2.6 };
     return p;
   });

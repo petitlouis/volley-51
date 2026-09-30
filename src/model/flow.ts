@@ -4,6 +4,7 @@ import {
   availableTargets,
   BLOCK_MAX_Y,
   defenseScene,
+  frontAttackers,
   INTENTIONS,
   OPPONENT_XY,
   receptionScene,
@@ -14,7 +15,7 @@ import {
   serviceScene,
 } from './formations';
 import { dist2 } from './geometry';
-import { courtSlots } from './libero';
+import { courtSlots, liberoPoste } from './libero';
 import { label, ROLE_OF } from './roles';
 import { isFront, lineup, POSTES, posteOf } from './rotation';
 import type { AttackTarget, DefenseAttack, PlayerId, Point, Poste, ReceptionMode, Scene } from './types';
@@ -105,12 +106,22 @@ export const actingSetter = (touched: PlayerId): PlayerId => (touched === 'P' ? 
 
 /** Étiquette d'un joueur : poste au moment du service et rôle (le serveur est toujours le 1). */
 const lab = (rotation: number, id: PlayerId): string =>
-  id === 'L' ? 'L' : label(id, posteOf(id as Exclude<PlayerId, 'L'>, rotation));
+  id === 'L' ? label('L', liberoPoste(rotation)) : label(id, posteOf(id as Exclude<PlayerId, 'L'>, rotation));
 
 function rotationText(rotation: number, libero: boolean): string {
   const lu = lineup(rotation);
   const parts = POSTES.map((p) => (p === 1 ? `${lab(rotation, lu[p])} (au service)` : lab(rotation, lu[p])));
   return `Rotation ${rotation} : ${parts.join(', ')}.${libero ? ' Le libéro remplace le central arrière.' : ''}`;
+}
+
+const ZONE_TEXT: Record<2 | 3 | 4, string> = { 4: 'à gauche', 3: 'au centre', 2: 'à droite' };
+
+/** Où se placent les attaquants de ligne avant pendant la passe. */
+function attackersText(n: number, attackers: Map<2 | 3 | 4, PlayerId>): string {
+  const parts = ([4, 3, 2] as const)
+    .filter((z) => attackers.has(z))
+    .map((z) => `${lab(n, attackers.get(z)!)} ${ZONE_TEXT[z]}`);
+  return `Pendant la passe, les attaquants de ligne avant se placent : ${parts.join(', ')}.`;
 }
 
 function setterText(n: number, touched: PlayerId, setterInFront: boolean): string {
@@ -122,15 +133,26 @@ function setterText(n: number, touched: PlayerId, setterInFront: boolean): strin
     : `Le passeur (${lab(n, 'P')}) est en ligne arrière et n'a pas touché la balle : il se libère vers le filet pour faire la passe.`;
 }
 
-const posteOfPlayer = (rotation: number, libero: boolean, id: PlayerId, phase: 'defense' | 'reception'): number =>
-  courtSlots(rotation, phase, libero).find((s) => s.player === id)!.poste;
+const posteOfPlayer = (
+  rotation: number,
+  libero: boolean,
+  id: PlayerId,
+  phase: 'defense' | 'reception',
+  ownServe = false,
+): number => courtSlots(rotation, phase, libero, ownServe).find((s) => s.player === id)!.poste;
 
-function targetOptions(rotation: number, libero: boolean, setter: PlayerId): Option[] {
-  return availableTargets(rotation, libero, setter).map((t) => ({ id: t, label: TARGET_LABEL[t] }));
+function targetOptions(rotation: number, libero: boolean, setter: PlayerId, ownServe = false): Option[] {
+  return availableTargets(rotation, libero, setter, ownServe).map((t) => ({ id: t, label: TARGET_LABEL[t] }));
 }
 
-function attackNode(rotation: number, libero: boolean, target: AttackTarget, setter: PlayerId): Node {
-  const scene = attackScene(rotation, libero, target, setter);
+function attackNode(
+  rotation: number,
+  libero: boolean,
+  target: AttackTarget,
+  setter: PlayerId,
+  ownServe = false,
+): Node {
+  const scene = attackScene(rotation, libero, target, setter, ownServe);
   return {
     title: TARGET_LABEL[target],
     text: TARGET_TEXT[target],
@@ -161,8 +183,9 @@ function serviceFlow(setup: FlowSetup, choices: string[]): Node[] {
 
   const attack = choices[0] as DefenseAttack;
   const opp = opponentAt(attack);
-  const defense = defenseScene(n, libero, attack);
-  const setterBack = !isFront(posteOfPlayer(n, libero, 'P', 'defense') as Poste);
+  // Échange commencé par notre service : le central du poste 1 reste en jeu, le libéro n'entre pas à sa place.
+  const defense = defenseScene(n, libero, attack, undefined, true);
+  const setterBack = !isFront(posteOfPlayer(n, libero, 'P', 'defense', true) as Poste);
   nodes.push({
     title: DEFENSE_LABEL[attack],
     text:
@@ -176,7 +199,7 @@ function serviceFlow(setup: FlowSetup, choices: string[]): Node[] {
 
   const intention = INTENTIONS[attack].find((i) => i.id === choices[1]);
   if (!intention) throw new Error(`Intention invalide : ${choices[1]}`);
-  const aimed = defenseScene(n, libero, attack, intention.id);
+  const aimed = defenseScene(n, libero, attack, intention.id, true);
   const blockers = aimed.players.filter((p) => p.onCourt && p.y <= BLOCK_MAX_Y);
   const others = aimed.players
     .filter((p) => p.onCourt && p.y > BLOCK_MAX_Y && p.id !== 'P')
@@ -193,7 +216,7 @@ function serviceFlow(setup: FlowSetup, choices: string[]): Node[] {
     options.push({
       id: p.id,
       label: `${lab(n, p.id)} reprend`,
-      hint: `poste ${posteOfPlayer(n, libero, p.id, 'defense')}${i === 0 ? ', le plus proche de la balle' : ''}`,
+      hint: `poste ${posteOfPlayer(n, libero, p.id, 'defense', true)}${i === 0 ? ', le plus proche de la balle' : ''}`,
     }),
   );
   nodes.push({
@@ -257,7 +280,7 @@ function serviceFlow(setup: FlowSetup, choices: string[]): Node[] {
       options: relievers.map((p, i) => ({
         id: p.id,
         label: `${lab(n, p.id)} relève`,
-        hint: `${p.y <= BLOCK_MAX_Y ? 'au filet' : `poste ${posteOfPlayer(n, libero, p.id, 'defense')}`}${i === 0 ? ', le plus proche' : ''}`,
+        hint: `${p.y <= BLOCK_MAX_Y ? 'au filet' : `poste ${posteOfPlayer(n, libero, p.id, 'defense', true)}`}${i === 0 ? ', le plus proche' : ''}`,
       })),
     });
     if (choices.length < 5) return nodes;
@@ -282,15 +305,16 @@ function digAndAttack(
   setterBack: boolean,
 ): Node[] {
   const digger = choices[at] as PlayerId;
+  const attackers = frontAttackers(n, libero, 'P', true);
   nodes.push({
     title: `${lab(n, digger)} reprend la balle`,
-    text: `${lab(n, digger)} court à la balle. ${setterText(n, digger, !setterBack)}`,
-    scene: withPath(secondContactScene(base, digger, 'P', landing), [landing, SETTER_TARGET]),
+    text: `${lab(n, digger)} court à la balle. ${setterText(n, digger, !setterBack)} ${attackersText(n, attackers)}`,
+    scene: withPath(secondContactScene(base, digger, 'P', landing, attackers), [landing, SETTER_TARGET]),
     question: 'Où passer ? Choisis notre attaque.',
-    options: targetOptions(n, libero, 'P'),
+    options: targetOptions(n, libero, 'P', true),
   });
   if (choices.length < at + 2) return nodes;
-  nodes.push(attackNode(n, libero, choices[at + 1] as AttackTarget, 'P'));
+  nodes.push(attackNode(n, libero, choices[at + 1] as AttackTarget, 'P', true));
   return nodes;
 }
 
@@ -353,10 +377,11 @@ function receptionFlow(setup: FlowSetup, choices: string[]): Node[] {
 
   const receiver = choices[1] as PlayerId;
   const setter = actingSetter(receiver);
+  const attackers = frontAttackers(n, libero, setter);
   nodes.push({
     title: `${lab(n, receiver)} réceptionne`,
-    text: `${lab(n, receiver)} court à la balle. ${setterText(n, receiver, setterInFront)}`,
-    scene: withPath(secondContactScene(formation, receiver, setter, zone.landing), [zone.landing, SETTER_TARGET]),
+    text: `${lab(n, receiver)} court à la balle. ${setterText(n, receiver, setterInFront)} ${attackersText(n, attackers)}`,
+    scene: withPath(secondContactScene(formation, receiver, setter, zone.landing, attackers), [zone.landing, SETTER_TARGET]),
     question: 'Où passer ? Choisis notre attaque.',
     options: targetOptions(n, libero, setter),
   });

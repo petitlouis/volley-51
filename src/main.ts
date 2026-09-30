@@ -1,5 +1,6 @@
 import './style.css';
 import { buildFlow, type FlowSetup, type Node, type StartKind } from './model/flow';
+import { liberoPoste } from './model/libero';
 import { isFrontRow, label, ROLE_NAME, ROLE_OF, roleColor } from './model/roles';
 import { lineup, POSTES } from './model/rotation';
 import type { ReceptionMode } from './model/types';
@@ -130,7 +131,15 @@ function renderLegend(): void {
     };
   });
   if (setup.libero) {
-    rows.push({ color: roleColor('L', false), text: "L : Libéro, ligne arrière, n'attaque jamais" });
+    const poste = liberoPoste(setup.rotation);
+    const qui =
+      poste === 1
+        ? "remplace le central du poste 1 quand l'adversaire sert ; quand nous servons, le central sert et reste en jeu"
+        : 'remplace le central arrière';
+    rows.push({
+      color: roleColor('L', false),
+      text: `${label('L', poste)} : Libéro (${qui}), ligne arrière, n'attaque jamais`,
+    });
   }
   $('legend').replaceChildren(
     ...rows.map((r) => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { courtSlots, liberoReplacesAt } from './libero';
+import { courtSlots, liberoPoste, liberoReplacesAt } from './libero';
 import { ROLE_OF } from './roles';
 import { isBack, isFront } from './rotation';
 import type { Phase } from './types';
@@ -93,6 +93,65 @@ describe('libéro', () => {
           if (s.replaced) expect(['Ca', 'Cb']).toContain(s.replaced);
         }
       }
+    }
+  });
+});
+
+describe('poste du libéro', () => {
+  it("c'est le poste du central de ligne arrière qu'il remplace, en réception, défense et attaque", () => {
+    for (const n of R) {
+      const poste = liberoPoste(n);
+      expect([1, 5, 6]).toContain(poste);
+      for (const ph of ['reception', 'defense', 'attack'] as Phase[]) {
+        const slots = courtSlots(n, ph, true);
+        expect(slots.find((s) => s.player === 'L')!.poste).toBe(poste);
+        expect(slots.find((s) => s.replaced)!.poste).toBe(poste);
+      }
+    }
+  });
+
+  it("au service, quand le central est au poste 1 il sert lui-même : le libéro n'entre pas et son poste théorique est 1", () => {
+    for (const n of R) {
+      const slots = courtSlots(n, 'service', true);
+      if (liberoPoste(n) === 1) expect(slots.some((s) => s.player === 'L')).toBe(false);
+      else expect(slots.find((s) => s.player === 'L')!.poste).toBe(liberoPoste(n));
+    }
+  });
+
+  it('un seul central est en ligne arrière : les postes 2, 3 et 4 en comptent exactement un', () => {
+    for (const n of R) {
+      const back = courtSlots(n, 'reception', false).filter((s) => !isFront(s.poste) && ROLE_OF[s.player] === 'C');
+      const front = courtSlots(n, 'reception', false).filter((s) => isFront(s.poste) && ROLE_OF[s.player] === 'C');
+      expect(back).toHaveLength(1);
+      expect(front).toHaveLength(1);
+    }
+  });
+});
+
+describe("libéro et échange commencé par notre service", () => {
+  it("le central du poste 1 reste en jeu quand nous servons (rotations 3 et 6), en défense comme en attaque", () => {
+    for (const n of [3, 6]) {
+      for (const ph of ['defense', 'attack'] as Phase[]) {
+        const slots = courtSlots(n, ph, true, true);
+        expect(slots.some((s) => s.player === 'L')).toBe(false);
+        expect(ROLE_OF[slots.find((s) => s.poste === 1)!.player]).toBe('C');
+      }
+    }
+  });
+
+  it("quand l'adversaire sert, le libéro remplace le central du poste 1 (1-L) : c'est l'échange par défaut", () => {
+    for (const n of [3, 6]) {
+      for (const ph of ['reception', 'defense', 'attack'] as Phase[]) {
+        const l = courtSlots(n, ph, true).find((s) => s.player === 'L');
+        expect(l?.poste).toBe(1);
+      }
+    }
+  });
+
+  it("aux postes 5 et 6, le libéro est en place dans les deux cas", () => {
+    for (const n of [1, 2, 4, 5]) {
+      expect(courtSlots(n, 'defense', true, true).some((s) => s.player === 'L')).toBe(true);
+      expect(courtSlots(n, 'defense', true, false).some((s) => s.player === 'L')).toBe(true);
     }
   });
 });

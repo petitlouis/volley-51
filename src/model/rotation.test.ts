@@ -73,9 +73,9 @@ describe('rotation', () => {
 });
 
 describe('étiquettes : poste au moment du service et rôle', () => {
-  it("rotation 1 : 1-P, 2-R4, 3-C, 4-Pt, 5-R4, 6-C", () => {
+  it("rotation 1 : 1-P, 2-R4a, 3-Ca, 4-Pt, 5-R4b, 6-Cb", () => {
     const lu = lineup(1);
-    expect(POSTES.map((p) => label(lu[p], p))).toEqual(['1-P', '2-R4', '3-C', '4-Pt', '5-R4', '6-C']);
+    expect(POSTES.map((p) => label(lu[p], p))).toEqual(['1-P', '2-R4a', '3-Ca', '4-Pt', '5-R4b', '6-Cb']);
   });
 
   it("le numéro est le poste du moment : le joueur qui sert est toujours le 1, dans toutes les rotations", () => {
@@ -85,10 +85,22 @@ describe('étiquettes : poste au moment du service et rôle', () => {
     }
   });
 
-  it("le numéro suit la rotation, pas l'origine : le passeur est 6-P à la rotation 2, le central Ca est 6-C à la rotation 4", () => {
+  it("le numéro suit la rotation, pas l'origine : le passeur est 6-P à la rotation 2, le central Ca est 6-Ca à la rotation 4", () => {
     expect(label('P', posteOf('P', 2))).toBe('6-P');
-    expect(label('Ca', posteOf('Ca', 4))).toBe('6-C');
+    expect(label('Ca', posteOf('Ca', 4))).toBe('6-Ca');
     expect(label('Pt', posteOf('Pt', 4))).toBe('1-Pt');
+  });
+
+  it("deux R4 et deux centraux se distinguent par une lettre : R4a/R4b et Ca/Cb, dans toutes les rotations", () => {
+    for (const n of R) {
+      const labels = POSTES.map((p) => label(lineup(n)[p], p).split('-')[1]);
+      expect(new Set(labels).size).toBe(6);
+      expect([...labels].sort()).toEqual(['Ca', 'Cb', 'P', 'Pt', 'R4a', 'R4b']);
+    }
+    // Une lettre identifie le joueur : Ca reste Ca même quand la rotation change son poste.
+    expect(label('Ca', 3)).toBe('3-Ca');
+    expect(label('Ca', 1)).toBe('1-Ca');
+    expect(label('R4b', 5)).toBe('5-R4b');
   });
 
   it("les six étiquettes d'une rotation portent les six numéros 1 à 6, une fois chacun", () => {
@@ -100,13 +112,14 @@ describe('étiquettes : poste au moment du service et rôle', () => {
   });
 
   it("sans poste (joueur sorti), l'étiquette n'affiche que le rôle, jamais « undefined »", () => {
-    expect(label('Ca')).toBe('C');
+    expect(label('Ca')).toBe('Ca');
     expect(label('Pt')).toBe('Pt');
   });
 
-  it("le libéro s'appelle L", () => {
+  it("le libéro porte le poste du central qu'il remplace : 6-L, 5-L ; sans poste, juste L", () => {
+    expect(label('L', 6)).toBe('6-L');
+    expect(label('L', 5)).toBe('5-L');
     expect(label('L')).toBe('L');
-    expect(label('L', 6)).toBe('L');
   });
 });
 

@@ -19,13 +19,32 @@ export function liberoReplacesAt(poste: Poste, phase: Phase): boolean {
   return poste === 1 && phase !== 'service';
 }
 
-export function courtSlots(rotation: number, phase: Phase, libero: boolean): Slot[] {
+/**
+ * `ownServe` : l'échange a commencé par notre service. Un libéro ne peut entrer ou sortir qu'entre deux
+ * échanges : le central qui sert (poste 1) reste donc en jeu jusqu'à la fin de l'échange.
+ */
+export function courtSlots(
+  rotation: number,
+  phase: Phase,
+  libero: boolean,
+  ownServe: boolean = phase === 'service',
+): Slot[] {
   const lu = lineup(rotation);
+  const rule: Phase = ownServe ? 'service' : phase === 'service' ? 'reception' : phase;
   return POSTES.map((poste) => {
     const player = lu[poste];
-    if (libero && ROLE_OF[player] === 'C' && liberoReplacesAt(poste, phase)) {
+    if (libero && ROLE_OF[player] === 'C' && liberoReplacesAt(poste, rule)) {
       return { poste, player: 'L' as PlayerId, replaced: player };
     }
     return { poste, player };
   });
+}
+
+/**
+ * Poste du libéro : celui du central de ligne arrière qu'il remplace (5 ou 6, et 1 quand ce central
+ * ne sert pas). Il y a toujours exactement un central en ligne arrière.
+ */
+export function liberoPoste(rotation: number): Poste {
+  const lu = lineup(rotation);
+  return ([5, 6, 1] as Poste[]).find((p) => ROLE_OF[lu[p]] === 'C')!;
 }

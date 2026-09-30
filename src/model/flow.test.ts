@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attackScene, availableTargets, frontAttackers, pipeAttacker, SETTER_TARGET } from './formations';
+import { attackScene, availableTargets, frontAttackers, pipeAttacker, SETTER_TARGET, ZONE_XY } from './formations';
 import { actingSetter, buildFlow, type FlowSetup, type Node } from './flow';
 import { minPairDistance } from './geometry';
 import { courtSlots } from './libero';
@@ -149,10 +149,10 @@ describe('hypothèses : départ sur le service', () => {
   it("contre : la centrale et le R4 au filet bloquent, puis contre gagnant (point) ou contre amorti", () => {
     const nodes = buildFlow(setup({ rotation: 1 }), ['adv4', 'ligne', 'BLOCK']);
     const block = nodes[2].options.find((o) => o.id === 'BLOCK')!;
-    expect(block.label).toBe('Contre : 2-R4 + 3-C');
+    expect(block.label).toBe('Contre : 2-R4a + 3-Ca');
     const outcome = nodes[3];
     expect(outcome.title).toBe('Contre');
-    expect(outcome.text).toContain('2-R4 et 3-C contrent');
+    expect(outcome.text).toContain('2-R4a et 3-Ca contrent');
     expect(outcome.options.map((o) => o.id)).toEqual(['kill', 'soft']);
   });
 
@@ -440,5 +440,131 @@ describe('trajet de la balle', () => {
     expect(nodes[3].scene.overlay.ballPath![1].y).toBe(0);
     expect(nodes[4].scene.overlay.ballPath![0].y).toBe(0);
     expect(kill[4].scene.overlay.ballPath![1].y).toBeLessThan(0);
+  });
+});
+
+describe('libéro et central qui sert', () => {
+  const rec = (over: Partial<FlowSetup> = {}) => setup({ kind: 'reception', ...over });
+
+  it("nous servons, central au poste 1 (rotations 3 et 6) : il reste en jeu pendant tout l'échange, le libéro n'entre pas", () => {
+    for (const rotation of [3, 6]) {
+      walk(setup({ rotation, libero: true }), (_choices, nodes) => {
+        for (const n of nodes) {
+          expect(get(n, 'L').onCourt).toBe(false);
+          const onCourt = n.scene.players.filter((p) => p.onCourt);
+          expect(onCourt).toHaveLength(6);
+          const first = onCourt.find((p) => p.poste === 1)!;
+          expect(first.role).toBe('C');
+          expect(n.options.map((o) => o.label).join(' ')).not.toContain('L reprend');
+          expect(n.options.map((o) => o.label).join(' ')).not.toContain('L relève');
+        }
+      });
+    }
+  });
+
+  it("nous servons, libéro en 6 ou 5 (rotations 1, 2, 4, 5) : il est en jeu du service à l'attaque", () => {
+    for (const rotation of [1, 2, 4, 5]) {
+      walk(setup({ rotation, libero: true }), (_choices, nodes) => {
+        for (const n of nodes) expect(get(n, 'L').onCourt).toBe(true);
+      });
+    }
+  });
+
+  it("nous réceptionnons, central au poste 1 (rotations 3 et 6) : le libéro le remplace avant l'échange (1-L) et peut réceptionner", () => {
+    for (const rotation of [3, 6]) {
+      const [n0] = buildFlow(rec({ rotation, libero: true }), []);
+      const l = get(n0, 'L');
+      expect(l.onCourt).toBe(true);
+      expect(l.poste).toBe(1);
+      const options = buildFlow(rec({ rotation, libero: true }), ['zone1'])[1].options.map((o) => o.label);
+      expect(options).toContain('1-L réceptionne');
+    }
+  });
+
+  it("le libéro ne sert jamais et n'occupe jamais un poste de ligne avant, dans aucun coup", () => {
+    for (const kind of ['service', 'reception'] as const) {
+      for (const rotation of R) {
+        walk(setup({ kind, rotation, libero: true }), (_choices, nodes) => {
+          for (const n of nodes) {
+            const l = get(n, 'L');
+            if (!l.onCourt) continue;
+            expect([1, 5, 6]).toContain(l.poste);
+            expect(l.y).toBeLessThanOrEqual(9);
+          }
+        });
+      }
+    }
+    // Au service, le serveur (poste 1, derrière la ligne de fond) n'est jamais le libéro.
+    for (const rotation of R) {
+      const [n0] = buildFlow(setup({ rotation, libero: true }), []);
+      const server = n0.scene.players.find((p) => p.onCourt && p.y > 9)!;
+      expect(server.id).not.toBe('L');
+    }
+  });
+});
+
+describe('les attaquants se placent pendant la passe', () => {
+  const rec = (over: Partial<FlowSetup> = {}) => setup({ kind: 'reception', ...over });
+
+  it("réception, rotation 1 : le central passe au centre, le R4 à gauche, le pointu à droite dès que le receveur joue la balle", () => {
+    const nodes = buildFlow(rec({ rotation: 1 }), ['zone6', 'L']);
+    const pass = nodes[2];
+    const at = (id: PlayerId) => {
+      const p = get(pass, id);
+      return { x: p.x, y: p.y };
+    };
+    expect(at('R4a')).toEqual({ x: ZONE_XY[4].x, y: ZONE_XY[4].y });
+    expect(at('Ca')).toEqual({ x: ZONE_XY[3].x, y: ZONE_XY[3].y });
+    expect(at('Pt')).toEqual({ x: ZONE_XY[2].x, y: ZONE_XY[2].y });
+    expect(pass.text).toContain('2-R4a à gauche');
+    expect(pass.text).toContain('3-Ca au centre');
+    expect(pass.text).toContain('4-Pt à droite');
+  });
+
+  it("seuls les joueurs de ligne avant se placent : les joueurs de ligne arrière restent derrière la ligne des 3 m", () => {
+    for (const rotation of R) {
+      for (const mode of [4, 5] as const) {
+        const [n0] = buildFlow(rec({ rotation, receptionMode: mode }), []);
+        for (const z of n0.options) {
+          const nodes = buildFlow(rec({ rotation, receptionMode: mode }), [z.id, buildFlow(rec({ rotation, receptionMode: mode }), [z.id])[1].options[0].id]);
+          const pass = nodes[2];
+          const setter = pass.text.includes('pointu') ? 'Pt' : 'P';
+          const attackers = new Set([...frontAttackers(rotation, true, setter).values()]);
+          for (const p of pass.scene.players.filter((q) => q.onCourt)) {
+            if (attackers.has(p.id) && p.id !== nodes[1].options[0].id) continue;
+            if (p.id === setter || p.id === nodes[1].options[0].id) continue;
+            if (p.role !== 'L' && p.poste !== null && ![2, 3, 4].includes(p.poste)) expect(p.y).toBeGreaterThanOrEqual(3);
+          }
+        }
+      }
+    }
+  });
+
+  it("passeur en ligne avant : seulement deux attaquants se placent", () => {
+    for (const rotation of [4, 5, 6]) {
+      const first = buildFlow(rec({ rotation }), [])[0].options[0].id;
+      const pass = buildFlow(rec({ rotation }), [first, buildFlow(rec({ rotation }), [first])[1].options[0].id])[2];
+      const parts = pass.text.match(/(à gauche|au centre|à droite)/g) ?? [];
+      expect(parts).toHaveLength(2);
+    }
+  });
+
+  it("nous servons : après la reprise de balle, les attaquants de ligne avant sont déjà à leur zone, et n'en bougent plus quand la passe est choisie", () => {
+    for (const rotation of R) {
+      const flow = buildFlow(setup({ rotation }), ['adv4', 'ligne']);
+      const toucher = flow[2].options.find((o) => o.id !== 'BLOCK')!.id as PlayerId;
+      const dig = buildFlow(setup({ rotation }), ['adv4', 'ligne', toucher])[3];
+      const attackers = frontAttackers(rotation, true, 'P', true);
+      const target = dig.options[0].id;
+      const attack = buildFlow(setup({ rotation }), ['adv4', 'ligne', toucher, target])[4];
+      for (const [zone, id] of attackers) {
+        if (id === toucher) continue;
+        const d = get(dig, id);
+        expect({ x: d.x, y: d.y }).toEqual({ x: ZONE_XY[zone].x, y: ZONE_XY[zone].y });
+        const a = get(attack, id);
+        expect({ x: a.x, y: a.y }).toEqual({ x: d.x, y: d.y });
+      }
+      expect(dig.text).toContain('se placent');
+    }
   });
 });

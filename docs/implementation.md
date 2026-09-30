@@ -106,7 +106,7 @@ Placement de l'équipe au service (RJ-08), selon le rôle et la ligne :
 | Id | Règle | Statut |
 | --- | --- | --- |
 | RJ-16 | **Ligne arrière** : il ne réceptionne pas, il ne défend pas, il se tient à droite prêt à monter. Il pénètre au filet pour la passe. | **Fait** |
-| RJ-17 | Après la passe, le passeur de ligne arrière « retourne défendre en 1 » (littérature). | **À faire** |
+| RJ-17 | Après la passe, le passeur de ligne arrière « retourne défendre en 1 » (littérature) : à l'étape d'attaque il quitte le filet pour le premier emplacement libre du fond, en commençant par (7,6 ; 6,6). De ligne avant, il reste au filet. | **Fait** |
 | RJ-18 | **Ligne avant** : il est au filet, il ne réceptionne pas et passe depuis le filet. Il n'y a alors que deux attaquants devant. | **Fait** |
 | RJ-19 | Si le passeur joue la balle (service sur lui, en ligne arrière), le **pointu** fait la passe. | **Fait** |
 | RJ-20 | Le point de passe est (6,6 ; 0,9) : côté droit du filet, entre les postes 2 et 3. | **Fait** |
@@ -116,8 +116,8 @@ Placement de l'équipe au service (RJ-08), selon le rôle et la ligne :
 | Id | Règle | Statut |
 | --- | --- | --- |
 | RJ-21 | Le pointu **ne réceptionne pas** : il ne le fait qu'en renfort quand la réception n'est pas assez solide. Il n'a pas de « miroir » comme les deux R4. | **À faire** (aujourd'hui il reçoit dès la réception à 4) |
-| RJ-22 | Il attaque en **zone 2** (droite). Exception de la rotation 1 en **réception** : il reste en poste 4 (gauche) et le R4 reste en 2 (droite). Après **notre** service en rotation 1, ils échangent (le pointu va en 2). | **À faire** (aujourd'hui : R4 en 4, pointu en 2 dans tous les cas) |
-| RJ-23 | Quand il est en **ligne arrière** (rotations 4, 5, 6), il attaque depuis derrière la ligne des 3 m (pipe) et défend en 1. | **À faire** (aujourd'hui le pipe va de préférence à un R4) |
+| RJ-22 | Il attaque en **zone 2** (droite). Exception de la rotation 1 en **réception** : il reste en poste 4 (gauche) et le R4 reste en 2 (droite), sans croisement. Après **notre** service en rotation 1, ils échangent (le pointu va en 2). L'exception ne vaut pas si le pointu fait la passe. | **Fait** |
+| RJ-23 | Quand il est en **ligne arrière** (rotations 4, 5, 6), il attaque depuis derrière la ligne des 3 m (pipe) et défend en 1. Dans les rotations 1 à 3, le pipe revient au R4 de ligne arrière. | **Fait** |
 
 ### 3.7 Réception : qui reçoit
 
@@ -145,11 +145,11 @@ d'au moins 1 m, on retient le plus proche des postes nominaux. Positions candida
 
 | Id | Règle | Statut |
 | --- | --- | --- |
-| RJ-24 | Zones d'attaque de ligne avant : R4 en 4, central en 3, pointu en 2 (préférence par rôle). Avec le passeur devant, deux zones seulement. | **Fait** (exception RJ-22 à faire) |
+| RJ-24 | Zones d'attaque de ligne avant : R4 en 4, central en 3, pointu en 2 (préférence par rôle), sauf l'exception RJ-22. Avec le passeur devant, deux zones seulement. | **Fait** |
 | RJ-25 | Positions d'attaque : zone 4 (1,3 ; 2,2), zone 3 (4,3 ; 2), zone 2 (7,8 ; 2,2), pipe (4,5 ; 4,6). | **Fait** |
 | RJ-26 | **Pendant la passe**, les attaquants de ligne avant se placent déjà à leur zone : le central au centre, le R4 à gauche, le pointu à droite. Le choix de la passe ne déplace ensuite que le soutien et l'attaquant qui s'élance. | **Fait** |
 | RJ-27 | Soutien : les joueurs qui ne sont ni au filet ni à l'attaque forment un demi-cercle derrière l'attaquant, à 4,4 m et 5,8 m du filet. Pipe : (2,6 ; 5,8), (6,4 ; 5,8), (4,5 ; 7,2). | **Fait** |
-| RJ-28 | Le pipe est frappé par un joueur de ligne arrière, jamais le libéro ni le passeur. | **Fait** |
+| RJ-28 | Le pipe est frappé par un joueur de ligne arrière, jamais le libéro ni le passeur : le pointu en priorité, puis un R4, puis un central. | **Fait** |
 
 ### 3.9 Défense
 
@@ -267,10 +267,10 @@ Pour la ligne arrière : « P pénètre pour la passe et retourne défendre en 1
 | À faire | Règle | Fichiers concernés |
 | --- | --- | --- |
 | Modes de réception à 3, 4, 5 ; pointu ne reçoit pas | RJ-21, 3.7 | `formations.ts` (réception), `flow.ts`, tests |
-| Rotation 1 en réception : pointu en zone 4, R4 en zone 2 | RJ-22 | `formations.ts` (`frontAttackers`), tests |
-| Pipe attaqué par le pointu en ligne arrière | RJ-23 | `formations.ts` (`pipeAttacker`), tests |
-| Retour du passeur en défense après la passe | RJ-17 | `flow.ts`, `formations.ts` |
 | Défense de départ au service alignée sur la « base 1 » | RJ-32 | `formations.ts`, à valider |
+
+Faits récemment : zones d'attaque de la rotation 1 en réception (RJ-22), pipe du pointu en ligne arrière (RJ-23), retour du
+passeur en défense après la passe (RJ-17).
 
 Les tests qui verrouillent les règles déjà implémentées : `src/model/rotation.test.ts` (RJ-01 à RJ-06),
 `src/model/libero.test.ts` (RJ-11 à RJ-15), `src/model/formations.test.ts` (RJ-08, RJ-09, RJ-16 à RJ-18,

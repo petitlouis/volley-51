@@ -63,15 +63,63 @@ Toute modification de placement doit rester conforme à ces règles.
 
 Prérequis : Node.js 22 ou plus récent.
 
+### 1. Dépendances
+
 ```bash
-npm install        # installer les dépendances
-npm run dev        # serveur de développement
-npm test           # tests unitaires (Vitest)
-npm run typecheck  # vérification des types
-npm run build      # produit dist/index.html
+npm install
 ```
 
-### Publier une release
+Installe les dépendances (Vite, TypeScript, Vitest) dans `node_modules/`. À refaire seulement quand `package.json` change.
+
+### 2. Vérification des types
+
+```bash
+npm run typecheck
+```
+
+Lance TypeScript en mode strict, sans rien produire : c'est le contrôle le plus rapide après une modification.
+
+### 3. Build
+
+```bash
+npm run build
+```
+
+Vérifie les types puis produit `dist/index.html`, un fichier autonome à ouvrir directement dans un navigateur. Il n'est
+pas versionné : il sert à la release GitHub et au déploiement GitHub Pages.
+
+### 4. Tests unitaires
+
+```bash
+npm test
+```
+
+Lance Vitest sur `src/model/*.test.ts`. Les tests couvrent toutes les règles du modèle : rotations, libéro, réception,
+défense, attaque et arbre d'hypothèses.
+
+### 5. Lancer l'application
+
+```bash
+npm run dev
+```
+
+- Application : [http://localhost:5173/](http://localhost:5173/). La page se recharge toute seule quand tu modifies un fichier.
+- Si le port 5173 est déjà pris (par un autre serveur Vite), Vite prend le suivant (5174, etc.) et affiche l'adresse réelle dans le terminal, à la ligne `Local:`.
+- Arrête le serveur avec `Ctrl+C`.
+
+Pour ouvrir la version construite sans serveur, ouvre `dist/index.html` après `npm run build`.
+
+### 6. Déploiement
+
+Trois workflows GitHub Actions, dans `.github/workflows/` :
+
+| Workflow | Déclencheur | Rôle |
+| --- | --- | --- |
+| `ci.yml` | push sur `main`, pull request | Types, tests et build ; publie `dist/index.html` en artefact |
+| `pages.yml` | push sur `main` | Déploie le site sur GitHub Pages |
+| `release.yml` | tag `vX.Y.Z` | Crée la release GitHub avec le fichier autonome |
+
+#### Publier une release
 
 `dist/index.html` n'est pas versionné : c'est le fichier de la release GitHub. Le numéro de version vient de
 `package.json` et s'affiche dans le pied de page de l'application. Pour publier, par exemple, la version 0.2.0 :
@@ -84,12 +132,8 @@ git tag v0.2.0
 git push && git push origin v0.2.0
 ```
 
-Le workflow `.github/workflows/release.yml` refuse la release si le tag ne correspond pas à `package.json`.
-Il vérifie ensuite les types, lance les tests, construit, puis crée la release avec le fichier
-`volley-51-v0.2.0.html`.
-
-L'intégration continue (`.github/workflows/ci.yml`) exécute les types, les tests et le build à chaque
-push sur `main` et à chaque pull request, et publie `dist/index.html` en artefact.
+Le workflow `release.yml` refuse la release si le tag ne correspond pas à `package.json`. Il vérifie ensuite les types,
+lance les tests, construit, puis crée la release avec le fichier `volley-51-v0.2.0.html`.
 
 ### Structure
 

@@ -10,7 +10,7 @@ front-end et joue en loisir compétition : garde le code simple et l'explication
 npm test           # Vitest, doit rester vert
 npm run typecheck  # tsc --noEmit
 npm run build      # typecheck puis dist/index.html (vite-plugin-singlefile)
-npm run dev        # développement
+npm run dev        # développement : http://localhost:5173/ (le terminal affiche le port réel)
 ```
 
 La CI (`.github/workflows/ci.yml`) lance typecheck, tests et build. `dist/` n'est jamais commité : le fichier

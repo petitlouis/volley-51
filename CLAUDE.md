@@ -52,3 +52,19 @@ Source : [règlement FIVB 2025-2028](https://www.fivb.com/wp-content/uploads/202
   garder tous les tests verts, y compris l'écart d'affichage d'au moins 1 m entre ronds.
 - Les coordonnées de défense, soutien et points de chute sont des conventions courantes, pas des règles :
   les ajuster à la demande de l'utilisateur.
+
+## Commits
+
+Toujours utiliser [Conventional Commits](https://www.conventionalcommits.org/fr/v1.0.0/) :
+
+```
+type(portée optionnelle): description courte en français
+```
+
+- **Types** : `feat` (nouvelle fonctionnalité), `fix` (correction), `docs`, `style`, `refactor`, `perf`,
+  `test`, `build`, `ci`, `chore`, `revert`.
+- **Portées usuelles** : `model`, `view`, `flow`, `ci`, `readme`. Exemple : `fix(model): écarter les bloqueurs du point de passe`.
+- Description à l'infinitif ou au présent, sans point final, 72 caractères au plus. Détails éventuels dans le corps du message.
+- Changement incompatible : ajouter `!` après le type (`feat(model)!: ...`) et un pied `BREAKING CHANGE:`.
+- Un commit = un changement cohérent, avec ses tests. Ne jamais commiter `dist/`.
+- Ne pas réécrire l'historique déjà poussé : les deux premiers commits (`8666692`, `90f7121`) sont antérieurs à cette règle.

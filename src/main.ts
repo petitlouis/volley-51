@@ -40,7 +40,12 @@ function buttons<T extends string | number>(
 
 function restart(): void {
   choices = [];
-  render();
+  // Numéro de version dans le pied de page, avec un lien vers la release correspondante.
+const version = $<HTMLAnchorElement>('version');
+version.textContent = `v${__APP_VERSION__}`;
+version.href = `https://github.com/petitlouis/volley-51/releases/tag/v${__APP_VERSION__}`;
+
+render();
 }
 
 function render(): void {
@@ -152,5 +157,10 @@ $<HTMLInputElement>('libero').addEventListener('change', (e) => {
   restart();
 });
 for (const id of ['radii', 'traces', 'angles']) $(id).addEventListener('change', render);
+
+// Numéro de version dans le pied de page, avec un lien vers la release correspondante.
+const version = $<HTMLAnchorElement>('version');
+version.textContent = `v${__APP_VERSION__}`;
+version.href = `https://github.com/petitlouis/volley-51/releases/tag/v${__APP_VERSION__}`;
 
 render();

@@ -1,7 +1,7 @@
 {
   "name": "volley-51",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Animation des placements et rotations du volley en système 5.1, avec libéro",
   "license": "MIT",
   "type": "module",

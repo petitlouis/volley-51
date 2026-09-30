@@ -17,6 +17,12 @@ const setup = (over: Partial<FlowSetup> = {}): FlowSetup => ({
   ...over,
 });
 const get = (n: Node, id: PlayerId) => n.scene.players.find((p) => p.id === id)!;
+/** À l'attaque, le passeur de ligne avant reste au filet, celui de ligne arrière retourne défendre au fond. */
+const setterAfterPass = (n: Node, id: PlayerId): boolean => {
+  const p = get(n, id);
+  const front = p.poste === 2 || p.poste === 3 || p.poste === 4;
+  return front ? p.x === SETTER_TARGET.x && p.y === SETTER_TARGET.y : p.y >= 6;
+};
 const atSetterTarget = (n: Node, id: PlayerId) => {
   const p = get(n, id);
   return p.x === SETTER_TARGET.x && p.y === SETTER_TARGET.y;
@@ -246,7 +252,7 @@ describe('hypothèses : départ sur le service', () => {
           expect(last.scene.overlay.hitter).toBeDefined();
           expect(last.scene.overlay.angles!.lines.length).toBeGreaterThanOrEqual(4);
           expect(minPairDistance(last.scene.players.filter((p) => p.onCourt))).toBeGreaterThanOrEqual(1);
-          expect(atSetterTarget(last, 'P')).toBe(true);
+          expect(setterAfterPass(last, 'P')).toBe(true);
           expect(last.scene.overlay.hitter).not.toBe('P');
         });
       }
@@ -352,7 +358,7 @@ describe('hypothèses : départ sur la réception', () => {
             expect({ x: r.x, y: r.y }).toEqual(land);
             expect(atSetterTarget(nodes[2], setter)).toBe(true);
             expect(nodes[2].scene.overlay.ball).toEqual(land);
-            expect(atSetterTarget(nodes[3], setter)).toBe(true);
+            expect(setterAfterPass(nodes[3], setter)).toBe(true);
             expect(nodes[3].scene.overlay.hitter).toBeDefined();
             expect(nodes[3].scene.overlay.angles).toBeDefined();
             expect(minPairDistance(nodes[3].scene.players.filter((p) => p.onCourt))).toBeGreaterThanOrEqual(1);
@@ -506,19 +512,42 @@ describe('libéro et central qui sert', () => {
 describe('les attaquants se placent pendant la passe', () => {
   const rec = (over: Partial<FlowSetup> = {}) => setup({ kind: 'reception', ...over });
 
-  it("réception, rotation 1 : le central passe au centre, le R4 à gauche, le pointu à droite dès que le receveur joue la balle", () => {
+  it("réception, rotation 1 : pas de croisement, le pointu reste à gauche (zone 4), le central au centre, le R4 à droite (zone 2)", () => {
     const nodes = buildFlow(rec({ rotation: 1 }), ['zone6', 'L']);
     const pass = nodes[2];
     const at = (id: PlayerId) => {
       const p = get(pass, id);
       return { x: p.x, y: p.y };
     };
-    expect(at('R4a')).toEqual({ x: ZONE_XY[4].x, y: ZONE_XY[4].y });
+    expect(at('Pt')).toEqual({ x: ZONE_XY[4].x, y: ZONE_XY[4].y });
     expect(at('Ca')).toEqual({ x: ZONE_XY[3].x, y: ZONE_XY[3].y });
+    expect(at('R4a')).toEqual({ x: ZONE_XY[2].x, y: ZONE_XY[2].y });
+    expect(pass.text).toContain('4-Pt à gauche');
+    expect(pass.text).toContain('3-Ca au centre');
+    expect(pass.text).toContain('2-R4a à droite');
+  });
+
+  it("nous servons en rotation 1 : le pointu et le R4 échangent (R4 à gauche, pointu à droite)", () => {
+    const nodes = buildFlow(setup({ rotation: 1 }), ['adv4', 'ligne', 'L']);
+    const pass = nodes[3];
+    const at = (id: PlayerId) => {
+      const p = get(pass, id);
+      return { x: p.x, y: p.y };
+    };
+    expect(at('R4a')).toEqual({ x: ZONE_XY[4].x, y: ZONE_XY[4].y });
     expect(at('Pt')).toEqual({ x: ZONE_XY[2].x, y: ZONE_XY[2].y });
     expect(pass.text).toContain('2-R4a à gauche');
-    expect(pass.text).toContain('3-Ca au centre');
     expect(pass.text).toContain('4-Pt à droite');
+  });
+
+  it("rotations 2 et 3 en réception : le pointu va en zone 2 après la réception, comme dans la littérature", () => {
+    for (const rotation of [2, 3]) {
+      const first = buildFlow(rec({ rotation }), ['zone6']);
+      const receiver = first[1].options[0].id;
+      const pass = buildFlow(rec({ rotation }), ['zone6', receiver])[2];
+      const pt = get(pass, 'Pt');
+      expect({ x: pt.x, y: pt.y }).toEqual({ x: ZONE_XY[2].x, y: ZONE_XY[2].y });
+    }
   });
 
   it("seuls les joueurs de ligne avant se placent : les joueurs de ligne arrière restent derrière la ligne des 3 m", () => {
@@ -528,7 +557,7 @@ describe('les attaquants se placent pendant la passe', () => {
         for (const z of n0.options) {
           const nodes = buildFlow(rec({ rotation, receptionMode: mode }), [z.id, buildFlow(rec({ rotation, receptionMode: mode }), [z.id])[1].options[0].id]);
           const pass = nodes[2];
-          const setter = pass.text.includes('pointu') ? 'Pt' : 'P';
+          const setter = actingSetter(nodes[1].options[0].id as PlayerId);
           const attackers = new Set([...frontAttackers(rotation, true, setter).values()]);
           for (const p of pass.scene.players.filter((q) => q.onCourt)) {
             if (attackers.has(p.id) && p.id !== nodes[1].options[0].id) continue;
@@ -566,5 +595,64 @@ describe('les attaquants se placent pendant la passe', () => {
       }
       expect(dig.text).toContain('se placent');
     }
+  });
+});
+
+describe('le passeur de ligne arrière pénètre puis retourne défendre', () => {
+  const rec = (over: Partial<FlowSetup> = {}) => setup({ kind: 'reception', ...over });
+
+  it("réception, passeur en ligne arrière (rotations 1 à 3) : au filet pendant la passe, puis de retour au fond à l'attaque", () => {
+    for (const rotation of [1, 2, 3]) {
+      const first = buildFlow(rec({ rotation }), ['zone6']);
+      const receiver = first[1].options.find((o) => o.id !== 'P')!.id;
+      const nodes = buildFlow(rec({ rotation }), ['zone6', receiver, 'p4']);
+      expect(atSetterTarget(nodes[2], 'P')).toBe(true);
+      const back = get(nodes[3], 'P');
+      expect(back.y).toBeGreaterThanOrEqual(6);
+      expect(atSetterTarget(nodes[3], 'P')).toBe(false);
+    }
+  });
+
+  it("réception, passeur en ligne avant (rotations 4 à 6) : il reste au filet à l'attaque", () => {
+    for (const rotation of [4, 5, 6]) {
+      const first = buildFlow(rec({ rotation }), ['zone6']);
+      const receiver = first[1].options[0].id;
+      const target = buildFlow(rec({ rotation }), ['zone6', receiver])[2].options[0].id;
+      const nodes = buildFlow(rec({ rotation }), ['zone6', receiver, target]);
+      expect(atSetterTarget(nodes[3], 'P')).toBe(true);
+    }
+  });
+
+  it("le texte de l'attaque annonce le retour en défense du passeur de ligne arrière, et seulement lui", () => {
+    const back = buildFlow(setup({ rotation: 1 }), ['adv4', 'ligne', 'L', 'p4'])[4];
+    expect(back.text).toContain('retourne défendre au fond');
+    const first = buildFlow(rec({ rotation: 4 }), ['zone6']);
+    const receiver = first[1].options[0].id;
+    const target = buildFlow(rec({ rotation: 4 }), ['zone6', receiver])[2].options[0].id;
+    const front = buildFlow(rec({ rotation: 4 }), ['zone6', receiver, target])[3];
+    expect(front.text).not.toContain('retourne défendre');
+  });
+
+  it("rotation 1 en réception : le texte explique que le pointu et le R4 ne se croisent pas ; pas en rotation 2", () => {
+    const first = buildFlow(rec({ rotation: 1 }), ['zone6']);
+    const pass = buildFlow(rec({ rotation: 1 }), ['zone6', first[1].options[0].id])[2];
+    expect(pass.text).toContain('ne se croisent pas');
+    const first2 = buildFlow(rec({ rotation: 2 }), ['zone6']);
+    const pass2 = buildFlow(rec({ rotation: 2 }), ['zone6', first2[1].options[0].id])[2];
+    expect(pass2.text).not.toContain('ne se croisent pas');
+  });
+
+  it("nous servons, passeur en ligne arrière : il pénètre pour la passe puis retourne défendre", () => {
+    const nodes = buildFlow(setup({ rotation: 1 }), ['adv4', 'ligne', 'L', 'p4']);
+    expect(atSetterTarget(nodes[3], 'P')).toBe(true);
+    expect(get(nodes[4], 'P').y).toBeGreaterThanOrEqual(6);
+  });
+
+  it("si le passeur de ligne arrière a réceptionné, le pointu (forcément en ligne avant) fait la passe et reste au filet", () => {
+    const first = buildFlow(rec({ rotation: 1 }), ['passeur', 'P']);
+    const target = first[2].options[0].id;
+    const nodes = buildFlow(rec({ rotation: 1 }), ['passeur', 'P', target]);
+    expect(atSetterTarget(nodes[2], 'Pt')).toBe(true);
+    expect(atSetterTarget(nodes[3], 'Pt')).toBe(true);
   });
 });

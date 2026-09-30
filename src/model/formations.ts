@@ -385,6 +385,15 @@ export function defenseScene(
 }
 
 export const SETTER_TARGET: Point = { x: 6.6, y: 0.9 };
+
+/** Passeur de ligne arrière : après la passe il retourne défendre au fond à droite (premier emplacement libre). */
+export const SETTER_RETURN_SPOTS: Point[] = [
+  { x: 7.6, y: 6.6 },
+  { x: 6.2, y: 6.6 },
+  { x: 4.8, y: 6.8 },
+  { x: 3.4, y: 6.8 },
+  { x: 2, y: 6.6 },
+];
 export const ZONE_XY: Record<2 | 3 | 4, Point> = {
   4: { x: 1.3, y: 2.2 },
   3: { x: 4.3, y: 2 },
@@ -401,10 +410,12 @@ const ZONE_PREF: Record<string, Record<2 | 3 | 4, number>> = {
 };
 const ZONES: (2 | 3 | 4)[] = [4, 3, 2];
 
-const PIPE_PREF: Record<string, number> = { R4: 0, Pt: 1, C: 2 };
+/** Le pipe est attaqué par le pointu quand il est en ligne arrière, sinon par un R4, sinon par un central. */
+const PIPE_PREF: Record<string, number> = { Pt: 0, R4: 1, C: 2 };
 
 /**
- * Joueurs de ligne avant (hors passeur du moment) affectés à une zone d'attaque.
+ * Joueurs de ligne avant (hors passeur du moment) affectés à une zone d'attaque : R4 en 4, central en 3, pointu en 2.
+ * Exception : en rotation 1, quand l'adversaire sert, le pointu (poste 4) et le R4 (poste 2) ne se croisent pas.
  * `setter` est le joueur qui fait la passe : `P` normalement, `Pt` quand le passeur a joué la balle.
  */
 export function frontAttackers(
@@ -414,6 +425,12 @@ export function frontAttackers(
   ownServe = false,
 ): Map<2 | 3 | 4, PlayerId> {
   const front = courtSlots(rotation, 'attack', libero, ownServe).filter((s) => isFront(s.poste) && s.player !== setter);
+  if (!ownServe && rotation === 1 && setter === 'P') {
+    // Rotation 1 en réception : pas de croisement. Le pointu reste en 4 (gauche), le R4 en 2 (droite).
+    const fixed = new Map<2 | 3 | 4, PlayerId>();
+    for (const s of front) fixed.set(s.poste as 2 | 3 | 4, s.player);
+    return fixed;
+  }
   const pick = bestAssignment(front.length, ZONES.length, (i, j) => {
     const s = front[i];
     return ZONE_PREF[ROLE_OF[s.player]][ZONES[j]] * 10 + dist2(BASE_XY[s.poste], ZONE_XY[ZONES[j]]) * 0.01;
@@ -423,7 +440,7 @@ export function frontAttackers(
   return map;
 }
 
-/** Attaquant arrière (pipe) : jamais le libéro ni le passeur. */
+/** Attaquant arrière (pipe) : le pointu s'il est derrière, jamais le libéro ni le passeur. */
 export function pipeAttacker(
   rotation: number,
   libero: boolean,
@@ -519,16 +536,24 @@ export function attackScene(
   const zones = frontAttackers(rotation, libero, setter, ownServe);
   const pipeId = target === 'pipe' ? pipeAttacker(rotation, libero, setter, ownServe) : null;
 
-  placed.set(setter, { ...SETTER_TARGET, radius: 1.5 });
+  // Passeur de ligne arrière : il a pénétré pour la passe, il retourne défendre. De ligne avant, il reste au filet.
+  const setterBack = !isFront(slots.find((s) => s.player === setter)!.poste);
+  if (!setterBack) placed.set(setter, { ...SETTER_TARGET, radius: 1.5 });
   for (const [zone, id] of zones) placed.set(id, { ...ZONE_XY[zone], radius: 1.2 });
   if (pipeId) placed.set(pipeId, { ...PIPE_XY, radius: 1.5 });
 
-  const covers = slots.filter((s) => !placed.has(s.player));
+  const covers = slots.filter((s) => !placed.has(s.player) && s.player !== setter);
   const points = coverPoints(target);
   const pick = bestAssignment(covers.length, points.length, (i, j) =>
     dist2(BASE_XY[covers[i].poste], points[j]),
   );
   covers.forEach((s, i) => placed.set(s.player, { ...points[pick[i]], radius: withLibero(s.player, 2.2) }));
+  if (setterBack) {
+    const spot =
+      SETTER_RETURN_SPOTS.find((c) => [...placed.values()].every((p) => dist2(p, c) >= 1.2 ** 2)) ??
+      SETTER_RETURN_SPOTS[0];
+    placed.set(setter, { ...spot, radius: 1.5 });
+  }
 
   const hitter = pipeId ?? zones.get(Number(target[1]) as 2 | 3 | 4);
   return finish(placed, slots, { hitter, angles: attackAngles(target) });

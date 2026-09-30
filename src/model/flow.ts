@@ -153,9 +153,11 @@ function attackNode(
   ownServe = false,
 ): Node {
   const scene = attackScene(rotation, libero, target, setter, ownServe);
+  const s = scene.players.find((p) => p.id === setter)!;
+  const returns = s.poste !== null && !isFront(s.poste);
   return {
     title: TARGET_LABEL[target],
-    text: TARGET_TEXT[target],
+    text: TARGET_TEXT[target] + (returns ? ` Le passeur (${lab(rotation, setter)}) a pénétré pour la passe : il retourne défendre au fond.` : ''),
     scene: withPath(scene, [SETTER_TARGET, scene.overlay.angles!.from]),
     question: null,
     options: [],
@@ -380,7 +382,11 @@ function receptionFlow(setup: FlowSetup, choices: string[]): Node[] {
   const attackers = frontAttackers(n, libero, setter);
   nodes.push({
     title: `${lab(n, receiver)} réceptionne`,
-    text: `${lab(n, receiver)} court à la balle. ${setterText(n, receiver, setterInFront)} ${attackersText(n, attackers)}`,
+    text:
+      `${lab(n, receiver)} court à la balle. ${setterText(n, receiver, setterInFront)} ${attackersText(n, attackers)}` +
+      (n === 1 && setter === 'P'
+        ? ` Rotation 1 en réception : le pointu (${lab(n, 'Pt')}) et le R4 (${lab(n, 'R4a')}) ne se croisent pas.`
+        : ''),
     scene: withPath(secondContactScene(formation, receiver, setter, zone.landing, attackers), [zone.landing, SETTER_TARGET]),
     question: 'Où passer ? Choisis notre attaque.',
     options: targetOptions(n, libero, setter),

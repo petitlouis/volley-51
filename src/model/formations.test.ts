@@ -365,13 +365,63 @@ describe('défense sans le passeur : décalage naturel', () => {
   });
 });
 
+describe('pipe du pointu', () => {
+  it("rotations 4, 5, 6 (pointu en ligne arrière) : le pointu attaque en pipe, depuis derrière la ligne des 3 m", () => {
+    for (const n of [4, 5, 6]) {
+      for (const lib of LIB) {
+        expect(pipeAttacker(n, lib)).toBe('Pt');
+        const s = attackScene(n, lib, 'pipe');
+        expect(s.overlay.hitter).toBe('Pt');
+        expect(get(s, 'Pt').y).toBeGreaterThanOrEqual(3);
+        expect(s.overlay.angles!.from.y).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
+  it("rotations 1, 2, 3 (pointu en ligne avant) : le pipe revient au R4 de ligne arrière", () => {
+    for (const n of [1, 2, 3]) {
+      const id = pipeAttacker(n, true);
+      expect(ROLE_OF[id]).toBe('R4');
+      expect(posteOf(id as 'R4a' | 'R4b', n)).not.toBe(2);
+      expect(isFront(posteOf(id as 'R4a' | 'R4b', n))).toBe(false);
+    }
+  });
+
+  it("si le pointu fait la passe, il n'attaque pas en pipe : un R4 le remplace", () => {
+    for (const n of [4, 5, 6]) {
+      expect(ROLE_OF[pipeAttacker(n, true, 'Pt')]).toBe('R4');
+    }
+  });
+});
+
 describe('attaque, soutien et angles', () => {
-  it('zones : les attaquants de ligne avant sont R4 en 4, C en 3, Pt en 2 quand ils sont tous devant', () => {
-    // Rotation 4 : P est au poste 4 ; rotation 1 : P au poste 1, le trio R4a, Ca, Pt est devant.
-    const zones = frontAttackers(1, false);
+  it('zones quand nous servons : R4 en 4, C en 3, Pt en 2, même en rotation 1 (le pointu et le R4 échangent)', () => {
+    // Rotation 1 : P au poste 1, le trio Pt (poste 4), Ca, R4a (poste 2) est devant.
+    const zones = frontAttackers(1, false, 'P', true);
     expect(zones.get(4)).toBe('R4a');
     expect(zones.get(3)).toBe('Ca');
     expect(zones.get(2)).toBe('Pt');
+  });
+
+  it("rotation 1 en réception (l'adversaire sert) : pas de croisement, le pointu reste en 4 (gauche) et le R4 en 2 (droite)", () => {
+    const zones = frontAttackers(1, false);
+    expect(zones.get(4)).toBe('Pt');
+    expect(zones.get(3)).toBe('Ca');
+    expect(zones.get(2)).toBe('R4a');
+    expect(frontAttackers(1, true).get(4)).toBe('Pt');
+  });
+
+  it("cette exception est propre à la rotation 1 : en réception, le pointu attaque en 2 dans les rotations 2 et 3", () => {
+    for (const n of [2, 3]) {
+      const zones = frontAttackers(n, false);
+      expect(zones.get(2)).toBe('Pt');
+    }
+  });
+
+  it("l'exception de la rotation 1 ne vaut pas quand le pointu fait la passe (le passeur a joué la balle)", () => {
+    const zones = frontAttackers(1, false, 'Pt');
+    expect([...zones.values()]).not.toContain('Pt');
+    expect(zones.get(4)).toBe('R4a');
   });
 
   it("passeur devant : deux zones attaquables au filet plus la pipe, donc 3 cibles", () => {
@@ -388,7 +438,7 @@ describe('attaque, soutien et angles', () => {
 
   it('les zones respectent les rôles : R4 jamais en 2 si un Pt est devant, C jamais en 4 si un R4 est devant', () => {
     for (const n of R) {
-      const zones = frontAttackers(n, false);
+      const zones = frontAttackers(n, false, 'P', true);
       const lu = lineup(n);
       const front = ([2, 3, 4] as const).map((p) => lu[p]);
       if (front.includes('Pt')) expect(zones.get(2)).toBe('Pt');
@@ -399,8 +449,9 @@ describe('attaque, soutien et angles', () => {
     }
   });
 
-  it('le passeur est au filet, au point de passe', () => {
+  it("passeur de ligne avant : il reste au filet, au point de passe, pendant l'attaque", () => {
     for (const n of R) {
+      if (!isFront(posteOf('P', n))) continue;
       for (const t of availableTargets(n, false)) {
         const p = get(attackScene(n, false, t), 'P');
         expect(p.y).toBeLessThanOrEqual(1.5);
@@ -409,7 +460,28 @@ describe('attaque, soutien et angles', () => {
     }
   });
 
-  it("le pipe est frappé par un joueur arrière qui n'est ni le passeur ni le libéro, en priorité R4", () => {
+  it("passeur de ligne arrière : après la passe il retourne défendre au fond (à droite de préférence), il n'est plus au filet", () => {
+    for (const n of R) {
+      if (isFront(posteOf('P', n))) continue;
+      for (const lib of LIB) {
+        for (const t of availableTargets(n, lib)) {
+          const s = attackScene(n, lib, t);
+          const p = get(s, 'P');
+          expect(p.y).toBeGreaterThanOrEqual(6);
+          expect(p.x).toBeGreaterThan(1.5);
+          expect(p.radius).toBeGreaterThan(0);
+          expect(minPairDistance(onCourt(s))).toBeGreaterThanOrEqual(1);
+        }
+      }
+    }
+  });
+
+  it("le passeur revient au fond à droite (7,6 ; 6,6) quand la place est libre, sinon au premier emplacement libre", () => {
+    const p = get(attackScene(1, false, 'p4'), 'P');
+    expect({ x: p.x, y: p.y }).toEqual({ x: 7.6, y: 6.6 });
+  });
+
+  it("le pipe est frappé par un joueur arrière qui n'est ni le passeur ni le libéro, en priorité le pointu puis un R4", () => {
     for (const n of R) {
       for (const lib of LIB) {
         const id = pipeAttacker(n, lib);
@@ -421,7 +493,8 @@ describe('attaque, soutien et angles', () => {
         const lu = lineup(n);
         const backIds = ([1, 5, 6] as const).map((p) => lu[p]);
         expect(backIds).toContain(id);
-        if (backIds.some((b) => ROLE_OF[b] === 'R4')) expect(ROLE_OF[id]).toBe('R4');
+        if (backIds.includes('Pt')) expect(id).toBe('Pt');
+        else if (backIds.some((b) => ROLE_OF[b] === 'R4')) expect(ROLE_OF[id]).toBe('R4');
       }
     }
   });

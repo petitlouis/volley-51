@@ -6,6 +6,11 @@
 ![Node.js 22+](https://img.shields.io/badge/node-%E2%89%A522-339933)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
 
+![Démonstration : attaque adverse en 4 le long de la ligne, le libéro couvre le passeur et reprend, passe au passeur, attaque du R4 en 4](docs/demo.gif)
+
+**[Tester en ligne](https://petitlouis.github.io/volley-51/)** ou
+**[télécharger la dernière release](https://github.com/petitlouis/volley-51/releases/latest)**.
+
 Application web pour comprendre le système 5.1 (un seul passeur) au volley, avec option libéro :
 rotations, service, réception, défense et attaque. On avance coup par coup en choisissant des
 hypothèses, comme aux échecs, et on voit les joueurs se déplacer.

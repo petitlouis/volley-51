@@ -13,5 +13,8 @@ coverage/
 .vscode/
 *.swp
 
+# Documents de travail (cahier des charges, PDF de référence) : jamais versionnés
+doc-temp/
+
 # Réglages locaux de Claude Code (le partagé reste versionné)
 .claude/settings.local.json

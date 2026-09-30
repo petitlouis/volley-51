@@ -310,29 +310,45 @@ describe('hypothèses : départ sur la réception', () => {
     }
   });
 
-  it("qui réceptionne : les receveurs classés du plus proche au plus éloigné ; pas le passeur au filet ni, à 4, le central au filet", () => {
+  it("qui réceptionne : uniquement les receveurs du mode (3, 4 ou 5), classés du plus proche au plus éloigné, plus le passeur s'il est en ligne arrière", () => {
     for (const rotation of R) {
-      for (const mode of [4, 5] as const) {
-        const base = buildFlow(rec({ rotation, receptionMode: mode }), []);
-        for (const z of base[0].options) {
-          const node = buildFlow(rec({ rotation, receptionMode: mode }), [z.id])[1];
-          const ids = node.options.map((o) => o.id as PlayerId);
-          expect(ids.includes('P')).toBe(!setterFront(rotation));
-          const expected = (mode === 5 ? 5 : 4) + (setterFront(rotation) ? 0 : 1);
-          expect(ids).toHaveLength(expected);
-          if (mode === 4) {
-            const netCentral = courtSlots(rotation, 'reception', true).find((s) => isFront(s.poste) && ROLE_OF[s.player] === 'C');
-            expect(ids).not.toContain(netCentral!.player);
+      for (const libero of [false, true]) {
+        for (const mode of [3, 4, 5] as const) {
+          const base = buildFlow(rec({ rotation, libero, receptionMode: mode }), []);
+          for (const z of base[0].options) {
+            const node = buildFlow(rec({ rotation, libero, receptionMode: mode }), [z.id])[1];
+            const ids = node.options.map((o) => o.id as PlayerId);
+            expect(ids.includes('P')).toBe(!setterFront(rotation));
+            expect(ids).toHaveLength(mode + (setterFront(rotation) ? 0 : 1));
+            // À 3 et à 4 le pointu ne reçoit pas ; le central de ligne avant ne reçoit qu'à partir de 4.
+            expect(ids.includes('Pt')).toBe(mode === 5);
+            const frontCentral = courtSlots(rotation, 'reception', libero).find(
+              (sl) => isFront(sl.poste) && ROLE_OF[sl.player] === 'C',
+            )!.player;
+            expect(ids.includes(frontCentral)).toBe(mode >= 4);
+            const land = node.scene.overlay.landing!;
+            const d = ids.map((id) => {
+              const p = get(node, id);
+              return Math.hypot(p.x - land.x, p.y - land.y);
+            });
+            expect(d[0]).toBeLessThanOrEqual(Math.min(...d.slice(1)) + 1e-9);
           }
-          const land = node.scene.overlay.landing!;
-          const d = ids.map((id) => {
-            const p = get(node, id);
-            return Math.hypot(p.x - land.x, p.y - land.y);
-          });
-          expect(d[0]).toBeLessThanOrEqual(Math.min(...d.slice(1)) + 1e-9);
         }
       }
     }
+  });
+
+  it("à 3, à 4 et à 5 : le texte annonce les receveurs et ceux qui ne reçoivent pas ; le pointu seulement en renfort à 5", () => {
+    const t3 = buildFlow(rec({ rotation: 1, receptionMode: 3 }), [])[0];
+    expect(t3.title).toBe('Réception à 3');
+    expect(t3.text).toContain('2-R4a, 5-R4b, 6-L reçoivent');
+    expect(t3.text).toContain('3-Ca, 4-Pt ne reçoivent pas');
+    const t4 = buildFlow(rec({ rotation: 1, receptionMode: 4 }), [])[0];
+    expect(t4.text).toContain('4-Pt ne reçoit pas');
+    const t5 = buildFlow(rec({ rotation: 1, receptionMode: 5 }), [])[0];
+    expect(t5.text).toContain('4-Pt');
+    expect(t5.text).toContain('renfort');
+    expect(t5.text).not.toContain('4-Pt ne reçoit');
   });
 
   it("passeur en ligne avant (rotation 6, poste 2) : il est au filet à droite et ne reçoit jamais", () => {
@@ -348,7 +364,7 @@ describe('hypothèses : départ sur la réception', () => {
 
   it('parcours complet : 4 coups, le receveur court au point de chute, le passeur du moment se place au filet, attaque avec angles', () => {
     for (const rotation of [1, 3, 5, 6]) {
-      for (const receptionMode of [4, 5] as const) {
+      for (const receptionMode of [3, 4, 5] as const) {
         for (const libero of [false, true]) {
           walk(rec({ rotation, receptionMode, libero }), (choices, nodes) => {
             expect(nodes).toHaveLength(4);

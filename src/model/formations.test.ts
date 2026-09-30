@@ -10,6 +10,7 @@ import {
   frontAttackers,
   pipeAttacker,
   receptionScene,
+  receivingSlots,
   serviceEnterScene,
   serviceScene,
 } from './formations';
@@ -146,11 +147,13 @@ describe('service : équipe au service libre (règle FIVB 7.4)', () => {
   });
 });
 
-describe('réception à 5 et à 4 : ordre de rotation obligatoire (règle FIVB 7.4)', () => {
+const MODES = [3, 4, 5] as const;
+
+describe('réception à 3, 4 et 5 : ordre de rotation obligatoire (règle FIVB 7.4)', () => {
   it("respecte l'ordre de rotation (arrière derrière l'avant correspondant, ordre latéral) pour toutes les rotations, modes et libéro", () => {
     for (const n of R) {
       for (const lib of LIB) {
-        for (const m of [4, 5] as const) {
+        for (const m of MODES) {
           // Avec libéro, le libéro tient la place du central remplacé : on contrôle par poste.
           const s = receptionScene(n, lib, m);
           const slots = courtSlots(n, 'reception', lib);
@@ -176,7 +179,7 @@ describe('réception à 5 et à 4 : ordre de rotation obligatoire (règle FIVB 7
   it('respecte 6 joueurs en jeu, distance >= 1 m à l\'écran, dans le demi-terrain', () => {
     for (const n of R) {
       for (const lib of LIB) {
-        for (const m of [4, 5] as const) {
+        for (const m of MODES) {
           const s = receptionScene(n, lib, m);
           expectShape(s, lib);
           expectInsideOurHalf(s);
@@ -188,7 +191,7 @@ describe('réception à 5 et à 4 : ordre de rotation obligatoire (règle FIVB 7
 
   it('le passeur est au filet quand il est en ligne avant, et derrière son vis-à-vis en ligne arrière', () => {
     for (const n of R) {
-      for (const m of [4, 5] as const) {
+      for (const m of MODES) {
         const s = receptionScene(n, false, m);
         const p = get(s, 'P');
         const front = [2, 3, 4].includes(posteOf('P', n));
@@ -197,31 +200,85 @@ describe('réception à 5 et à 4 : ordre de rotation obligatoire (règle FIVB 7
       }
     }
   });
+});
 
-  it('à 5 : les 5 receveurs sont à 3 m du filet ou plus', () => {
+describe('qui reçoit : à 3, à 4, à 5', () => {
+  const receiversOf = (n: number, lib: boolean, m: 3 | 4 | 5) =>
+    receivingSlots(courtSlots(n, 'reception', lib), m).map((s) => s.player);
+
+  it('à 3 : les deux R4 et le central de ligne arrière (ou le libéro) ; ni le pointu, ni le passeur, ni le central avant', () => {
     for (const n of R) {
-      const s = receptionScene(n, false, 5);
-      const receivers = onCourt(s).filter((p) => p.id !== 'P');
-      expect(receivers).toHaveLength(5);
-      expect(receivers.every((p) => p.y >= 3)).toBe(true);
+      for (const lib of LIB) {
+        const ids = receiversOf(n, lib, 3);
+        expect(ids).toHaveLength(3);
+        expect(ids).toContain('R4a');
+        expect(ids).toContain('R4b');
+        expect(ids).not.toContain('Pt');
+        expect(ids).not.toContain('P');
+        const third = ids.find((id) => ROLE_OF[id] !== 'R4')!;
+        const slot = courtSlots(n, 'reception', lib).find((s) => s.player === third)!;
+        expect(isFront(slot.poste)).toBe(false);
+        expect(['Ca', 'Cb', 'L']).toContain(third);
+        if (lib) expect(third).toBe('L');
+      }
     }
   });
 
-  it('à 4 : 4 receveurs à 3 m ou plus, le central de ligne avant reste au filet', () => {
+  it('à 4 : + le central de ligne avant, le pointu ne reçoit toujours pas', () => {
     for (const n of R) {
-      const s = receptionScene(n, false, 4);
-      const lu = lineup(n);
-      const frontCentral = ([2, 3, 4] as const).map((p) => lu[p]).find((id) => ROLE_OF[id] === 'C')!;
-      expect(get(s, frontCentral).y).toBeLessThanOrEqual(1.5);
-      const receivers = onCourt(s).filter((p) => p.id !== 'P' && p.id !== frontCentral);
-      expect(receivers).toHaveLength(4);
-      expect(receivers.every((p) => p.y >= 3)).toBe(true);
+      const ids = receiversOf(n, false, 4);
+      expect(ids).toHaveLength(4);
+      expect(ids).not.toContain('Pt');
+      expect(ids).not.toContain('P');
+      expect(ids).toEqual(expect.arrayContaining(['R4a', 'R4b', 'Ca', 'Cb']));
+    }
+  });
+
+  it('à 5 : + le pointu en renfort, tous sauf le passeur', () => {
+    for (const n of R) {
+      const ids = receiversOf(n, false, 5);
+      expect(ids).toHaveLength(5);
+      expect(ids).toContain('Pt');
+      expect(ids).not.toContain('P');
+    }
+  });
+
+  it('le pointu ne reçoit qu\'à 5, le passeur jamais, le libéro toujours quand il est en jeu', () => {
+    for (const n of R) {
+      for (const m of MODES) {
+        const ids = receiversOf(n, true, m);
+        expect(ids.includes('Pt')).toBe(m === 5);
+        expect(ids).not.toContain('P');
+        if (courtSlots(n, 'reception', true).some((s) => s.player === 'L')) expect(ids).toContain('L');
+      }
+    }
+  });
+
+  it('les receveurs sont à 3 m du filet ou plus ; ceux qui ne reçoivent pas sont au filet (ligne avant) ou au fond (pointu derrière)', () => {
+    for (const n of R) {
+      for (const lib of LIB) {
+        for (const m of MODES) {
+          const s = receptionScene(n, lib, m);
+          const slots = courtSlots(n, 'reception', lib);
+          const receivers = receivingSlots(slots, m);
+          for (const sl of slots) {
+            const p = get(s, sl.player);
+            if (receivers.includes(sl)) {
+              expect(p.y).toBeGreaterThanOrEqual(3);
+            } else if (sl.player !== 'P') {
+              // Pointu ou central qui ne reçoit pas : au filet s'il est devant, derrière les receveurs sinon.
+              if (isFront(sl.poste)) expect(p.y).toBeLessThanOrEqual(1.5);
+              else expect(p.y).toBeGreaterThanOrEqual(7);
+            }
+          }
+        }
+      }
     }
   });
 
   it('avec libéro, le libéro reçoit et ne se place jamais au filet', () => {
     for (const n of R) {
-      for (const m of [4, 5] as const) {
+      for (const m of MODES) {
         const l = get(receptionScene(n, true, m), 'L');
         if (l.onCourt) expect(l.y).toBeGreaterThanOrEqual(3);
       }

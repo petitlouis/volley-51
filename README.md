@@ -35,7 +35,7 @@ contre gagnant ou amorti), passe du passeur, attaque avec soutien et angles d'at
 
 ### Nous réceptionnons
 
-Réception à 4 ou à 5 dans l'ordre de rotation obligatoire, zone visée par le serveur adverse,
+Réception à 3, 4 ou 5 receveurs (à 3 : les deux R4 et le central arrière ou le libéro ; le pointu ne reçoit qu'à 5, en renfort), dans l'ordre de rotation obligatoire, zone visée par le serveur adverse,
 receveur, passe (le pointu passe si le passeur a réceptionné), attaque avec soutien et angles.
 
 ### Lire le terrain

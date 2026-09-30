@@ -115,6 +115,8 @@ export function serviceEnterScene(rotation: number, libero: boolean): Scene {
 }
 
 export const RECEPTION_SETTER: Point = { x: 6.8, y: 1 };
+
+/** Receveurs en W à 5 (tous sauf le passeur). */
 export const W5: Point[] = [
   { x: 1.2, y: 3.2 },
   { x: 2.9, y: 6.6 },
@@ -123,7 +125,7 @@ export const W5: Point[] = [
   { x: 7.8, y: 3.2 },
 ];
 /**
- * Réception à 4 : formation en arc, avec des emplacements supplémentaires en avant
+ * Emplacements possibles des receveurs à 4 : formation en arc, avec des emplacements supplémentaires en avant
  * pour que tous les cas d'ordre de rotation (règle 7.4) aient une solution.
  */
 export const W4: Point[] = [
@@ -135,6 +137,14 @@ export const W4: Point[] = [
   { x: 4.5, y: 3.6 },
   { x: 6, y: 3.4 },
 ];
+/** Emplacements possibles des receveurs à 3 (les deux R4 et le central arrière) : W4 plus trois points de fond. */
+export const W3: Point[] = [
+  ...W4,
+  { x: 1.4, y: 4.4 },
+  { x: 7.6, y: 4.4 },
+  { x: 4.5, y: 6.8 },
+];
+const RECEIVER_SPOTS: Record<ReceptionMode, Point[]> = { 3: W3, 4: W4, 5: W5 };
 
 /** Emplacements candidats du passeur : au filet s'il est en ligne avant, derrière son vis-à-vis sinon. */
 const SETTER_FRONT_SPOTS: Point[] = [
@@ -151,8 +161,8 @@ const SETTER_BACK_SPOTS: Point[] = [
   { x: 4.5, y: 4.8 },
   { x: 2.2, y: 4.8 },
 ];
-/** Emplacements candidats du central de ligne avant qui reste au filet en réception à 4. */
-const NET_CENTRAL_SPOTS: Point[] = [
+/** Emplacements candidats d'un joueur de ligne avant qui ne reçoit pas : au filet, prêt à attaquer. */
+const NET_SPOTS: Point[] = [
   { x: 4.3, y: 1.1 },
   { x: 3, y: 1 },
   { x: 5.6, y: 1 },
@@ -160,6 +170,31 @@ const NET_CENTRAL_SPOTS: Point[] = [
   { x: 1, y: 1 },
   { x: 7.2, y: 1 },
 ];
+/** Emplacements candidats du pointu de ligne arrière qui ne reçoit pas : derrière les receveurs. */
+const HIDDEN_BACK_SPOTS: Point[] = [
+  { x: 7.8, y: 7.6 },
+  { x: 1.2, y: 7.6 },
+  { x: 4.5, y: 8.2 },
+  { x: 6.3, y: 8 },
+  { x: 2.7, y: 8 },
+];
+
+/**
+ * Qui reçoit selon le mode (le pointu est le dernier à rejoindre la réception) :
+ * - à 3 : les deux R4 et le central de ligne arrière (ou le libéro) ;
+ * - à 4 : + le central de ligne avant ;
+ * - à 5 : + le pointu, en renfort.
+ * Le passeur ne reçoit jamais.
+ */
+export function receivingSlots(slots: Slot[], mode: ReceptionMode): Slot[] {
+  return slots.filter((s) => {
+    const role = ROLE_OF[s.player];
+    if (role === 'P') return false;
+    if (role === 'R4') return true;
+    if (role === 'Pt') return mode === 5;
+    return !isFront(s.poste) || mode >= 4;
+  });
+}
 
 function* arrangements(n: number, k: number, used: number[] = []): Generator<number[]> {
   if (used.length === k) {
@@ -169,11 +204,18 @@ function* arrangements(n: number, k: number, used: number[] = []): Generator<num
   for (let i = 0; i < n; i++) if (!used.includes(i)) yield* arrangements(n, k, [...used, i]);
 }
 
+function* combinations(lists: Point[][], picked: number[] = []): Generator<number[]> {
+  if (picked.length === lists.length) {
+    yield picked;
+    return;
+  }
+  for (let i = 0; i < lists[picked.length].length; i++) yield* combinations(lists, [...picked, i]);
+}
+
 /**
- * Réception à 5 : tous sauf le passeur reçoivent, en W.
- * Réception à 4 : le central de ligne avant reste au filet (attaque rapide) et ne reçoit pas.
- * L'équipe en réception doit respecter l'ordre de rotation (règle 7.4) : parmi tous les placements
- * possibles, on retient le plus proche des postes nominaux qui respecte cet ordre.
+ * Réception : le passeur et ceux qui ne reçoivent pas se placent au filet (ligne avant) ou derrière les
+ * receveurs (ligne arrière). L'équipe en réception doit respecter l'ordre de rotation (règle 7.4) : parmi tous
+ * les placements possibles, on retient le plus proche des postes nominaux qui respecte cet ordre.
  */
 const receptionCache = new Map<string, Scene>();
 
@@ -186,38 +228,39 @@ export function receptionScene(rotation: number, libero: boolean, mode: Receptio
   return scene;
 }
 
+function spotsFor(s: Slot): Point[] {
+  const front = isFront(s.poste);
+  if (ROLE_OF[s.player] === 'P') return front ? SETTER_FRONT_SPOTS : SETTER_BACK_SPOTS;
+  return front ? NET_SPOTS : HIDDEN_BACK_SPOTS;
+}
+
 function computeReception(rotation: number, libero: boolean, mode: ReceptionMode): Scene {
   const slots = courtSlots(rotation, 'reception', libero);
-  const setter = slots.find((s) => s.player === 'P')!;
-  const central =
-    mode === 4 ? slots.find((s) => isFront(s.poste) && ROLE_OF[s.player] === 'C') : undefined;
-  const receivers = slots.filter((s) => s !== setter && s !== central);
-  const points = mode === 5 ? W5 : W4;
-  const setterSpots = isFront(setter.poste) ? SETTER_FRONT_SPOTS : SETTER_BACK_SPOTS;
-  const centralSpots = central ? NET_CENTRAL_SPOTS : [undefined];
+  const receivers = receivingSlots(slots, mode);
+  const others = slots.filter((s) => !receivers.includes(s));
+  const otherSpots = others.map(spotsFor);
+  const points = RECEIVER_SPOTS[mode];
 
   for (const margin of [0.3, 0]) {
     let best: { cost: number; byPoste: Map<Poste, Point> } | undefined;
-    setterSpots.forEach((sp, si) => {
-      centralSpots.forEach((cp, ci) => {
-        for (const pick of arrangements(points.length, receivers.length)) {
-          const byPoste = new Map<Poste, Point>([[setter.poste, sp]]);
-          if (central && cp) byPoste.set(central.poste, cp);
-          receivers.forEach((r, i) => byPoste.set(r.poste, points[pick[i]]));
-          const rec = Object.fromEntries(byPoste) as Record<Poste, Point>;
-          if (overlapViolations(rec, margin).length > 0) continue;
-          if (minPairDistance([...byPoste.values()]) < 1) continue;
-          let cost = si * 0.5 + ci * 0.5;
-          for (const [poste, xy] of byPoste) cost += dist2(BASE_XY[poste], xy);
-          if (!best || cost < best.cost) best = { cost, byPoste };
-        }
-      });
-    });
+    for (const choice of combinations(otherSpots)) {
+      for (const pick of arrangements(points.length, receivers.length)) {
+        const byPoste = new Map<Poste, Point>();
+        others.forEach((o, i) => byPoste.set(o.poste, otherSpots[i][choice[i]]));
+        receivers.forEach((r, i) => byPoste.set(r.poste, points[pick[i]]));
+        const rec = Object.fromEntries(byPoste) as Record<Poste, Point>;
+        if (overlapViolations(rec, margin).length > 0) continue;
+        if (minPairDistance([...byPoste.values()]) < 1) continue;
+        let cost = choice.reduce((a, c) => a + c * 0.5, 0);
+        for (const [poste, xy] of byPoste) cost += dist2(BASE_XY[poste], xy);
+        if (!best || cost < best.cost) best = { cost, byPoste };
+      }
+    }
     if (best) {
       const placed: Placed = new Map();
       for (const s of slots) {
         const xy = best.byPoste.get(s.poste)!;
-        const radius = s === setter || s === central ? 1.5 : withLibero(s.player, 2.2);
+        const radius = receivers.includes(s) ? withLibero(s.player, 2.2) : 1.5;
         placed.set(s.player, { ...xy, radius });
       }
       return finish(placed, slots);

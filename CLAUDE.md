@@ -45,7 +45,11 @@ tenir à jour quand une règle change.
 - **Passe** : pendant la passe, les attaquants de ligne avant se placent déjà à leur zone (central au centre, R4 à
   gauche, pointu à droite, seulement deux si le passeur est en ligne avant).
 - **Passeur** : il ne défend pas en ligne arrière, il est à la passe. Il ne réceptionne que s'il est en
-  ligne arrière ; le pointu fait alors la passe.
+  ligne arrière ; le pointu fait alors la passe. Après la passe, le passeur de ligne arrière retourne défendre.
+- **Pointu** : il attaque en zone 2 (sauf rotation 1 en réception, où il reste en 4). Il ne réceptionne pas, sauf en
+  renfort à 5 receveurs. En ligne arrière (rotations 4 à 6), c'est lui qui attaque le pipe.
+- **Réception** : à 3 receveurs (les deux R4 et le central arrière ou le libéro, mode par défaut), à 4 (+ central
+  avant), à 5 (+ pointu en renfort).
 
 ## Architecture
 

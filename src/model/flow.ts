@@ -8,6 +8,7 @@ import {
   INTENTIONS,
   OPPONENT_XY,
   receptionScene,
+  receivingSlots,
   secondContactScene,
   SERVE_ZONES,
   SERVER_XY,
@@ -16,7 +17,7 @@ import {
 } from './formations';
 import { dist2 } from './geometry';
 import { courtSlots, liberoPoste } from './libero';
-import { label, ROLE_OF } from './roles';
+import { label } from './roles';
 import { isFront, lineup, POSTES, posteOf } from './rotation';
 import type { AttackTarget, DefenseAttack, PlayerId, Point, Poste, ReceptionMode, Scene } from './types';
 
@@ -113,6 +114,12 @@ function rotationText(rotation: number, libero: boolean): string {
   const parts = POSTES.map((p) => (p === 1 ? `${lab(rotation, lu[p])} (au service)` : lab(rotation, lu[p])));
   return `Rotation ${rotation} : ${parts.join(', ')}.${libero ? ' Le libéro remplace le central arrière.' : ''}`;
 }
+
+const MODE_NOTE: Record<ReceptionMode, string> = {
+  3: 'le pointu, le passeur et le central de ligne avant se préparent à attaquer.',
+  4: 'le central de ligne avant reçoit aussi ; le pointu et le passeur se préparent à attaquer.',
+  5: 'le pointu reçoit en renfort quand la réception n\'est pas assez solide ; le passeur ne reçoit pas.',
+};
 
 const ZONE_TEXT: Record<2 | 3 | 4, string> = { 4: 'à gauche', 3: 'au centre', 2: 'à droite' };
 
@@ -323,18 +330,20 @@ function digAndAttack(
 function receptionFlow(setup: FlowSetup, choices: string[]): Node[] {
   const { rotation: n, libero, receptionMode: mode } = setup;
   const formation = receptionScene(n, libero, mode);
-  const four = mode === 4;
   const rule =
     "L'équipe en réception doit respecter l'ordre de rotation (règle 7.4) : le passeur se place au filet " +
     "s'il est en ligne avant, derrière son vis-à-vis s'il est en ligne arrière.";
   const slots = courtSlots(n, 'reception', libero);
-  const netCentral = four
-    ? slots.find((s) => isFront(s.poste) && ROLE_OF[s.player] === 'C')?.player
-    : undefined;
+  const receiving = receivingSlots(slots, mode);
+  const receivingIds = receiving.map((s) => s.player);
+  const names = (list: PlayerId[]): string => list.map((id) => lab(n, id)).join(', ');
+  const idle = slots
+    .filter((s) => !receiving.includes(s) && s.player !== 'P')
+    .map((s) => s.player);
   const setterInFront = isFront(posteOfPlayer(n, libero, 'P', 'reception') as Poste);
-  // Le passeur en ligne avant est au filet : il ne reçoit pas.
+  // Seuls les receveurs du mode jouent le service ; le passeur de ligne arrière peut être visé (le pointu passe).
   const candidates = formation.players.filter(
-    (p) => p.onCourt && p.id !== netCentral && !(p.id === 'P' && setterInFront),
+    (p) => p.onCourt && (receivingIds.includes(p.id) || (p.id === 'P' && !setterInFront)),
   );
   const zones = SERVE_ZONES.map((z) => ({ id: z.id, label: z.label, hint: z.hint, landing: z.landing }));
   if (!setterInFront) {
@@ -343,12 +352,12 @@ function receptionFlow(setup: FlowSetup, choices: string[]): Node[] {
   }
   const nodes: Node[] = [
     {
-      title: four ? 'Réception à 4' : 'Réception à 5',
+      title: `Réception à ${mode}`,
       text:
         `${rotationText(n, libero)} ` +
-        (four
-          ? `Réception à 4 : le central de ligne avant (${lab(n, netCentral!)}) reste au filet pour attaquer vite, les quatre autres reçoivent. `
-          : 'Réception à 5 : les cinq joueurs autres que le passeur reçoivent en W. ') +
+        `Réception à ${mode} : ${names(receivingIds)} reçoivent. ` +
+        `${idle.length > 0 ? `${names(idle)} ne reçoi${idle.length > 1 ? 'vent' : 't'} pas : ` : ''}` +
+        `${idle.length > 0 ? MODE_NOTE[mode] : MODE_NOTE[mode][0].toUpperCase() + MODE_NOTE[mode].slice(1)} ` +
         rule,
       scene: withPath(formation, [OPPONENT_SERVER]),
       question: 'Où le serveur adverse vise-t-il ?',

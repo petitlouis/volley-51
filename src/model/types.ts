@@ -2,7 +2,7 @@ export type PlayerId = 'P' | 'R4a' | 'R4b' | 'Ca' | 'Cb' | 'Pt' | 'L';
 export type Poste = 1 | 2 | 3 | 4 | 5 | 6;
 export type Role = 'P' | 'R4' | 'C' | 'Pt' | 'L';
 export type Phase = 'service' | 'reception' | 'defense' | 'attack';
-export type ReceptionMode = 4 | 5;
+export type ReceptionMode = 3 | 4 | 5;
 export type DefenseAttack = 'adv4' | 'adv3' | 'adv2' | 'pipe';
 export type AttackTarget = 'p4' | 'p3' | 'p2' | 'pipe';
 

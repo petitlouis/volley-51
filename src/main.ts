@@ -6,7 +6,7 @@ import { lineup, POSTES } from './model/rotation';
 import type { ReceptionMode } from './model/types';
 import { CourtView, type ViewOptions } from './view/court';
 
-const setup: FlowSetup = { kind: 'service', rotation: 1, libero: true, receptionMode: 5 };
+const setup: FlowSetup = { kind: 'service', rotation: 1, libero: true, receptionMode: 3 };
 let choices: string[] = [];
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -68,7 +68,7 @@ function render(): void {
   );
   buttons<ReceptionMode>(
     $('receptionMode'),
-    [{ value: 4, text: 'À 4' }, { value: 5, text: 'À 5' }],
+    [{ value: 3, text: 'À 3' }, { value: 4, text: 'À 4' }, { value: 5, text: 'À 5' }],
     setup.receptionMode,
     (v) => { setup.receptionMode = v; restart(); },
   );

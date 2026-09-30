@@ -1,0 +1,33 @@
+name: Release
+
+# Publie dist/index.html comme fichier de release GitHub quand on pousse un tag `v*` (par exemple v0.1.0).
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      - name: Créer la release avec le fichier autonome
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          cp dist/index.html "volley-51-${TAG}.html"
+          gh release create "${TAG}" "volley-51-${TAG}.html" --title "${TAG}" --generate-notes

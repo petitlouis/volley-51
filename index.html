@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Volley 5.1, placements animés</title>
+  </head>
+  <body>
+    <header>
+      <h1>Volley 5.1 : placements et rotations</h1>
+      <div class="setup">
+        <div class="setup-item">
+          <span class="cap">Départ</span>
+          <div id="kind" class="row"></div>
+        </div>
+        <div class="setup-item">
+          <span class="cap">Rotation</span>
+          <div id="rotations" class="row"></div>
+        </div>
+        <div class="setup-item" id="receptionItem" hidden>
+          <span class="cap">Réception</span>
+          <div id="receptionMode" class="row"></div>
+        </div>
+        <label class="check"><input type="checkbox" id="libero" checked /> Avec libéro</label>
+      </div>
+    </header>
+    <main>
+      <section class="stage">
+        <div id="court"></div>
+        <div class="transport">
+          <label>Vitesse <input id="speed" type="range" min="1" max="4" step="1" value="2" /></label>
+        </div>
+      </section>
+      <aside class="panel">
+        <div class="nav">
+          <button id="undo" class="primary" title="Revenir au coup précédent pour changer d'hypothèse (touche Retour arrière)">&#9664; Changer d'hypothèse</button>
+          <button id="restart" title="Recommencer depuis le départ">&#8634; Recommencer</button>
+        </div>
+        <div class="group explain">
+          <h2 id="stepTitle"></h2>
+          <p id="stepText"></p>
+        </div>
+        <div class="group question" id="questionBox">
+          <h2 id="question"></h2>
+          <div id="options" class="options"></div>
+        </div>
+        <div class="group" id="endBox" hidden>
+          <p class="end-hint">Fin du scénario. Utilise « Changer d'hypothèse » ou clique sur un coup de la liste pour tester une autre branche.</p>
+        </div>
+        <div class="group">
+          <h2>Coups joués</h2>
+          <ol id="history" class="history"></ol>
+        </div>
+        <div class="group">
+          <h2>Affichage</h2>
+          <label class="check"><input type="checkbox" id="radii" checked /> Rayon d'action (cercles hachurés)</label>
+          <label class="check"><input type="checkbox" id="traces" checked /> Traces de déplacement</label>
+          <label class="check"><input type="checkbox" id="angles" checked /> Angles d'attaque</label>
+        </div>
+        <div class="group">
+          <h2>Légende</h2>
+          <p class="end-hint">Le numéro est la position au moment du service, le 1 est toujours le serveur. Couleur claire : ligne avant, couleur foncée : ligne arrière. Un joueur de ligne arrière n'attaque qu'à partir de derrière la ligne des 3 m, le libéro n'attaque jamais.</p>
+          <ul id="legend" class="legend"></ul>
+        </div>
+      </aside>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

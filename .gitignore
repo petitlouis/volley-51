@@ -1,0 +1,17 @@
+# Dépendances et build
+node_modules/
+dist/
+
+# Sorties de tests et outils
+.vitest/
+coverage/
+*.log
+
+# Éditeurs et système
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Réglages locaux de Claude Code (le partagé reste versionné)
+.claude/settings.local.json

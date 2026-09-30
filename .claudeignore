@@ -1,0 +1,7 @@
+# Fichiers que Claude n'a pas besoin de lire
+node_modules/
+dist/
+.vitest/
+coverage/
+package-lock.json
+*.log

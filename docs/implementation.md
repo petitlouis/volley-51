@@ -115,9 +115,9 @@ Placement de l'équipe au service (RJ-08), selon le rôle et la ligne :
 
 | Id | Règle | Statut |
 | --- | --- | --- |
-| RJ-21 | Le pointu **ne réceptionne pas** : il ne le fait qu'en renfort quand la réception n'est pas assez solide. Il n'a pas de « miroir » comme les deux R4. | **À faire** (aujourd'hui il reçoit dès la réception à 4) |
+| RJ-21 | Le pointu **ne réceptionne pas** : il ne le fait qu'en renfort quand la réception n'est pas assez solide. Il n'a pas de « miroir » comme les deux R4. | **Fait** |
 | RJ-22 | Il attaque en **zone 2** (droite). Exception de la rotation 1 en **réception** : il reste en poste 4 (gauche) et le R4 reste en 2 (droite), sans croisement. Après **notre** service en rotation 1, ils échangent (le pointu va en 2). L'exception ne vaut pas si le pointu fait la passe. | **Fait** |
-| RJ-23 | Quand il est en **ligne arrière** (rotations 4, 5, 6), il attaque depuis derrière la ligne des 3 m (pipe) et défend en 1. Dans les rotations 1 à 3, le pipe revient au R4 de ligne arrière. | **Fait** |
+| RJ-23 | Quand il est en **ligne arrière** (rotations 4, 5, 6), il attaque depuis derrière la ligne des 3 m (pipe) et défend en 1. Dans les rotations 1 à 3, le pipe revient au R4 de ligne arrière. **Simplification** : le pointu frappe le pipe au centre (4,5 ; 4,6) ; la littérature le place plutôt à droite, derrière les 3 m (voir section 7). | **Fait** (simplifié) |
 
 ### 3.7 Réception : qui reçoit
 
@@ -125,21 +125,22 @@ Décision de l'équipe : trois modes, le pointu ne rejoignant la réception qu'e
 
 | Mode | Receveurs | Statut |
 | --- | --- | --- |
-| **À 3** (référence) | R4, R4 et central de ligne arrière (ou libéro) | **À faire** |
-| **À 4** | + le central de ligne avant | **À faire** |
-| **À 5** | + le pointu, en renfort | **À faire** |
+| **À 3** (référence, mode par défaut) | R4, R4 et central de ligne arrière (ou libéro) | **Fait** |
+| **À 4** | + le central de ligne avant | **Fait** |
+| **À 5** | + le pointu, en renfort | **Fait** |
 
-Ne reçoivent jamais : le passeur en ligne avant, le passeur en ligne arrière (sauf service visant sa place, RJ-19).
-Aujourd'hui l'application propose deux modes, à 4 (tous sauf le passeur et le central de ligne avant) et à 5 (tous
-sauf le passeur), et le pointu reçoit dans les deux : les modes ci-dessus remplacent ce comportement.
+Ne reçoit jamais : le passeur (en ligne avant il est au filet ; en ligne arrière il n'est proposé que si le service vise
+sa place, RJ-19). Le pointu ne reçoit qu'à 5. Ceux qui ne reçoivent pas se placent au filet s'ils sont en ligne avant
+(emplacements candidats : (4,3 ; 1,1), (3 ; 1), (5,6 ; 1), (2 ; 1), (1 ; 1), (7,2 ; 1)) ou, pour le pointu de ligne
+arrière, derrière les receveurs ((7,8 ; 7,6), (1,2 ; 7,6), (4,5 ; 8,2), (6,3 ; 8), (2,7 ; 8)).
 
 Méthode de placement (RJ-09) : parmi tous les placements possibles respectant l'ordre de rotation et un écart d'affichage
 d'au moins 1 m, on retient le plus proche des postes nominaux. Positions candidates des receveurs :
 
 - En W à 5 : (1,2 ; 3,2), (2,9 ; 6,6), (4,5 ; 3,8), (6,1 ; 6,6), (7,8 ; 3,2).
 - En arc à 4 : (1,5 ; 3,5), (3,2 ; 6,6), (5,8 ; 6,6), (7,5 ; 3,5), plus (3 ; 3,4), (4,5 ; 3,6), (6 ; 3,4).
+- À 3 : les emplacements de l'arc à 4, plus (1,4 ; 4,4), (7,6 ; 4,4), (4,5 ; 6,8).
 - Passeur en ligne avant : au filet, (6,8 ; 1) en priorité. En ligne arrière : derrière son vis-à-vis, par exemple (8,3 ; 4,6).
-- Central de ligne avant resté au filet : (4,3 ; 1,1) en priorité.
 
 ### 3.8 Attaque et soutien
 
@@ -266,11 +267,10 @@ Pour la ligne arrière : « P pénètre pour la passe et retourne défendre en 1
 
 | À faire | Règle | Fichiers concernés |
 | --- | --- | --- |
-| Modes de réception à 3, 4, 5 ; pointu ne reçoit pas | RJ-21, 3.7 | `formations.ts` (réception), `flow.ts`, tests |
 | Défense de départ au service alignée sur la « base 1 » | RJ-32 | `formations.ts`, à valider |
 
-Faits récemment : zones d'attaque de la rotation 1 en réception (RJ-22), pipe du pointu en ligne arrière (RJ-23), retour du
-passeur en défense après la passe (RJ-17).
+Faits récemment : modes de réception à 3, 4 et 5 (RJ-21), zones d'attaque de la rotation 1 en réception (RJ-22), pipe du
+pointu en ligne arrière (RJ-23), retour du passeur en défense après la passe (RJ-17).
 
 Les tests qui verrouillent les règles déjà implémentées : `src/model/rotation.test.ts` (RJ-01 à RJ-06),
 `src/model/libero.test.ts` (RJ-11 à RJ-15), `src/model/formations.test.ts` (RJ-08, RJ-09, RJ-16 à RJ-18,
@@ -282,3 +282,4 @@ RJ-24 à RJ-31), `src/model/flow.test.ts` (intentions, arbre d'hypothèses, RJ-1
 2. **Service** : le placement libre par rôle (RJ-08) place le passeur et le pointu à droite. La littérature place parfois le passeur directement à 3 m (rotation 2) : à valider.
 3. **Défense de départ** : reproduire exactement la « base 1 » des documents du club (RJ-32) ou garder le placement par rôle.
 4. **Coordonnées** : défense, soutien, points de chute et zones de service sont des conventions à ajuster.
+5. **Attaques arrière par zone** (choix de stratégie de l'équipe, non traité) : tout joueur de ligne arrière peut attaquer depuis les postes 1, 5 ou 6 en s'élançant de derrière les 3 m. Le mot « pipe » désigne strictement l'attaque du poste 6 (centre). La littérature 5-1 dit « Pt attaque à 3 m » et place le pointu à droite (poste 1), alors que l'application n'a qu'une cible « pipe » au centre. Options envisagées : ajouter « arrière en 1 » pour le pointu, et éventuellement « arrière en 5 », en gardant le pipe central pour les R4. À décider avec l'équipe avant de coder.

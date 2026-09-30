@@ -96,3 +96,6 @@ label select { margin-left: 6px; padding: 4px; }
 .nav button:disabled { opacity: 0.4; cursor: not-allowed; }
 .end-hint { margin: 0; font-size: 0.9rem; color: var(--muted); }
 .landing { stroke: #c0392b; stroke-width: 0.16; stroke-linecap: round; }
+.site-footer { display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: center; padding: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.85rem; }
+.site-footer a { color: var(--accent); text-decoration: none; }
+.site-footer a:hover { text-decoration: underline; }

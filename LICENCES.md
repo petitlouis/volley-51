@@ -3,7 +3,7 @@
 ## Ce projet
 
 Volley 5.1 est publié sous licence **MIT**. Le texte complet est dans le fichier [`LICENSE`](LICENSE).
-Remplace la mention « Auteurs de Volley 5.1 » par ton nom avant de publier.
+Copyright (c) 2026 Jean-Louis PETITLAURENT.
 
 ## Dépendances
 

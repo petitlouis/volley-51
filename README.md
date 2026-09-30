@@ -41,7 +41,9 @@ receveur, passe (le pointu passe si le passeur a réceptionné), attaque avec so
 ### Lire le terrain
 
 - Le numéro d'un rond est le **poste au moment du service** ; le 1 est toujours le serveur.
-  Le rôle suit : `P` passeur, `R4` réceptionneur-attaquant, `C` central, `Pt` pointu, `L` libéro.
+  Le joueur suit : `P` passeur, `R4a` et `R4b` les deux réceptionneurs-attaquants, `Ca` et `Cb` les deux centraux,
+  `Pt` pointu, `L` libéro (numéroté comme le central qu'il remplace, par exemple `6-L`). Les lettres `a` et `b`
+  identifient chaque joueur : `Ca` reste `Ca` quand la rotation change son poste (`3-Ca`, puis `2-Ca`, puis `1-Ca`).
 - **Couleur claire** : ligne avant. **Couleur foncée** : ligne arrière.
 - Un joueur de ligne arrière n'attaque que depuis derrière la ligne des 3 m. Le libéro n'attaque jamais.
 - Cercle hachuré : rayon d'action théorique. Croix rouge : point de chute attendu. Balle blanche : sa trajectoire.
